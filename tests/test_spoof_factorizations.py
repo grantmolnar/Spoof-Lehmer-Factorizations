@@ -5,6 +5,48 @@ import numpy as np
 import pytest
 
 
+def test_count_positives_negatives():
+    """
+    Tests the count_positives_negatives method.
+    """
+
+    function_to_test = count_positives_negatives
+
+    # Create a namedtuple to better organize test case parameters
+    TestCase = namedtuple(
+        "TestCase",
+        [
+            "numbers",
+        ],
+    )
+
+    input_list = [
+        TestCase([]),
+        TestCase([i for i in range(1, 5)]),
+        TestCase([i for i in range(-17, 5)]),
+        TestCase(("ABA",)),
+    ]
+    output_list = [
+        (0, 0),
+        (4, 0),
+        (4, 17),
+        TypeError,
+    ]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                function_to_test(*test_input)
+        else:
+            test_output = function_to_test(*test_input)
+            # print(f"Test Input: {test_input}\nTest Output: {test_output}\nOstensible Output: {ostensible_output}")
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+
 def test_product_of_list():
     """
     Tests the product_of_list method.
