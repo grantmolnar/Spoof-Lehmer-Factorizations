@@ -341,6 +341,10 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
         fail_on_negative = False
         # We step by 2 from our start term because we know we want odd factors
         for next_factor in integer_magnitude_iterator(start_term, step=2):
+            # If neither positive nor factors work, we move on
+            if fail_on_positive and fail_on_negative:
+                break
+
             # print(next_factor)
             if next_factor > 0 and base_spoof.rplus == base_spoof.splus:
                 fail_on_positive = True
@@ -371,8 +375,6 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                             rplus, rminus, k, base_spoof=augmented_spoof, verbose = verbose
                         ):
                         yield spoof
-                if fail_on_positive and fail_on_negative:
-                    break
 
 
 def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
