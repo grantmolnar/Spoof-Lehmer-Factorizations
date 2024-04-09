@@ -314,3 +314,6 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
             else:
                 for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus, rminus, k, base_spoof = augmented_spoof):
                     yield spoof
+
+for t in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(2, 0, 2):
+    print(str(t))
