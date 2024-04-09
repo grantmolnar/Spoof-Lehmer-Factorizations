@@ -108,6 +108,7 @@ def integer_magnitude_iterator(start: int, step: int = 1) -> Iterator[int]:
 
     Parameters:
         start (int): The integer from which to start.
+        step (int): The increment by which we vary our start.
 
     Yields:
         int: The next integer in the sequence.
@@ -121,11 +122,6 @@ def integer_magnitude_iterator(start: int, step: int = 1) -> Iterator[int]:
         yield -n
         n += step
 
-
-# Example usage:
-iterator = integer_magnitude_iterator(-3)
-for _ in range(10):  # Print first 10 values for demonstration
-    print(next(iterator))
 
 def evaluate(numbers) -> int:
     """
@@ -289,8 +285,32 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
             yield base_spoof
     # Otherwise, our base_spoof is incomplete and we will augment it if we can
     else:
-        upper_bound, lower_bound = base_spoof.k_bounds()
+        # TODO
+        # Are we basically doing this twice? Can we cut this check?
+        # upper_bound, lower_bound = base_spoof.k_bounds()
         # If our upper or lower bounds are incompatible with k, there is no need to go further.
-        if lower_bound <= k and upper_bound <= k:
-            # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately
-            pass
+        # if lower_bound <= k and upper_bound <= k:
+        # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately
+        if base_spoof.factors == []:
+            start_term = 3
+        else:
+            start_term = base_spoof.factors[-1]
+        # Even if the current case is impossible, we need to double-check the next case, too, because positive and negative terms are different. After that, we're good
+        fail_on_positive = False
+        fail_on_negative = False
+        # We step by 2 from our start term because we know we want odd factors
+        for next_factor in integer_magnitude_iterator(start_term, step=2):
+            augmented_spoof = base_spoof.with_additional_factors(next_factor)
+            augmented_upper_bound, augmented_lower_bound = (
+                augmented_spoof.k_bounds()
+            )
+            if k < augmented_lower_bound or k > augmented_upper_bound:
+                if next_factor > 0:
+                    fail_on_positive = True
+                else:
+                    fail_on_negative = True
+                if fail_on_positive and fail_on_negative:
+                    break
+            else:
+                for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus, rminus, k, base_spoof = augmented_spoof):
+                    yield spoof
