@@ -1,4 +1,4 @@
-from typing import List, Optional, Tuple
+from typing import Iterator, List, Optional, Tuple
 from fractions import Fraction
 from functools import reduce
 import operator
@@ -17,6 +17,13 @@ from collections import Counter
 # If r- is odd, then F.evaluation < 0, so the numerator of our equation is negative. Also, xi * (xi - 1) is positive regardless of whether xi is positive or negative, and F.totient is negative,
 # So in this case, k(F) is increasing in its arguments.
 # If r+ is even, then F.evaluation > 0, our numerator is positive, and a similar argument shows that k(F) is decreasing in its arguments.
+
+# This code assumes the following theorems, and no others:
+# No interesting odd spoof Lehmer factorizations have +/- 1 as a base
+# All exponents of odd spoof Lehmer factorizations are 1
+# k(F) is decreasing in its arguments if rminus is even, and increasing otherwise (proven above.)
+
+# Notably, we do not (yet) use any congruence conditions on the factors
 
 def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
     """
@@ -90,6 +97,35 @@ def sort_by_magnitude_then_positivity(numbers: List[int]) -> List[int]:
     # positive numbers should come before negative ones. This is achieved by
     # checking if the number is negative to influence the secondary sort criteria.
     return sorted(numbers, key=lambda x: (abs(x), 1 if x < 0 else 0))
+
+
+def integer_magnitude_iterator(start: int, step: int = 1) -> Iterator[int]:
+    """
+    An iterator that yields integers with a magnitude greater than or equal to
+    the given integer, starting with positives followed by negatives.
+    If the given integer is negative, a positive integer of its own magnitude
+    is not yielded.
+
+    Parameters:
+        start (int): The integer from which to start.
+
+    Yields:
+        int: The next integer in the sequence.
+    """
+    n = start
+    if n <= 0:
+        yield n
+        n = abs(n) + step
+    while True:
+        yield n
+        yield -n
+        n += step
+
+
+# Example usage:
+iterator = integer_magnitude_iterator(-3)
+for _ in range(10):  # Print first 10 values for demonstration
+    print(next(iterator))
 
 def evaluate(numbers) -> int:
     """
@@ -231,7 +267,7 @@ class partialSpoofLehmerFactorization:
         else:
             return (bound_1, bound_2)
 
-def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rminus: int, k : int, base_spoof : Optional[partialSpoofLehmerFactorization] = None):
+def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rminus: int, k : int, base_spoof : Optional[partialSpoofLehmerFactorization] = None)-> Iterator[partialSpoofLehmerFactorization]:
     """
     Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
 
@@ -254,5 +290,7 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
     # Otherwise, our base_spoof is incomplete and we will augment it if we can
     else:
         upper_bound, lower_bound = base_spoof.k_bounds()
+        # If our upper or lower bounds are incompatible with k, there is no need to go further.
         if lower_bound <= k and upper_bound <= k:
             # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately
+            pass
