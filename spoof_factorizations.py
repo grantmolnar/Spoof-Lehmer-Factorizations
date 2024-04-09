@@ -51,7 +51,7 @@ def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
 
     return positive_count, negative_count
 
-def product_of_list(numbers: List[int]) -> int:
+def compute_product_of_list(numbers: List[int]) -> int:
     """
     Calculates the product of all integers in a given list.
     
@@ -62,7 +62,7 @@ def product_of_list(numbers: List[int]) -> int:
         int: The product of all integers in the list. Returns 1 for an empty list.
     
     Example:
-        >>> product_of_list([1, 2, 3, 4])
+        >>> compute_product_of_list([1, 2, 3, 4])
         24
     """
     output = reduce(operator.mul, numbers, 1)
@@ -93,7 +93,7 @@ def sort_by_magnitude_then_positivity(numbers: List[int]) -> List[int]:
 
 def evaluate(numbers) -> int:
     """
-    Returns the product of the elements of our list
+    Returns the product of the elements of our list. This is an alias for compute_product_of_list.
 
     Parameters:
         numbers (List[int]): A list of integers to be multiplied
@@ -105,7 +105,7 @@ def evaluate(numbers) -> int:
         >>> evaluate([-2, -1, 1, 2, 3, -3])
         -36
     """
-    return product_of_list(numbers)
+    return compute_product_of_list(numbers)
 
 def compute_totient(numbers) -> List[int]:
     """
@@ -121,7 +121,7 @@ def compute_totient(numbers) -> List[int]:
         >>> evaluate([-2, -1, 1, 2, 3, -3])
         0
     """
-    return product_of_list([factor - 1 for factor in numbers])
+    return compute_product_of_list([factor - 1 for factor in numbers])
 
 class partialSpoofLehmerFactorization:
     """
@@ -161,8 +161,8 @@ class partialSpoofLehmerFactorization:
         self.splus, self.sminus = count_positives_negatives(self.factors)
         # The number of positive and negative factors we have should not exceed the number we *can* have
         assert self.splus <= self.rplus and self.sminus <= self.rminus
-        # self.evaluation = product_of_list(self.factors)
-        # self.totient = product_of_list([factor - 1 for factor in self.factors])
+        # self.evaluation = compute_product_of_list(self.factors)
+        # self.totient = compute_product_of_list([factor - 1 for factor in self.factors])
 
     def with_additional_factors(self, **kwargs): #-> partialSpoofLehmerFactorization
         """
@@ -189,7 +189,13 @@ class partialSpoofLehmerFactorization:
         """
         return f"partialSpoofLehmerFactorization(rplus={self.rplus}, rminus={self.rminus}, k={self.k}, factors={self.factors})"
 
-    def kBounds(self) -> Tuple[Fraction, Fraction]:
+    def totient(self) -> int:
+        return compute_totient(self.factors)
+
+    def evaluation(self) -> int:
+        return evaluate(self.factors)
+
+    def k_bounds(self) -> Tuple[Fraction, Fraction]:
         """
         Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
         """
@@ -224,3 +230,29 @@ class partialSpoofLehmerFactorization:
             return (bound_2, bound_1)
         else:
             return (bound_1, bound_2)
+
+def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rminus: int, k : int, base_spoof : Optional[partialSpoofLehmerFactorization] = None):
+    """
+    Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
+
+    Parameters:
+            rplus (int): The positive component of the factorization.
+            rminus (int): The negative component of the factorization.
+            k (Optional[int]): An optional adjustment parameter, which we'd like to satisfy k * phi(F) = e(F) - 1
+            factors (Optional[List[int]]): An optional list of factor integers. Defaults to None.
+
+    Yields:
+        All nontrivial odd spoof Lehmer factorizations with rplus positive factors, rminus negative factors, and such that k = (evaluate(F) - 1)/(compute_totient(F))
+    """
+    # If our base spoof is none, we initialize an empty spoof
+    if base_spoof == None:
+        base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors = None)
+    # If our base spoof is complete, we check if it works
+    elif base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus:
+        if k*base_spoof.totient() == base_spoof.evaluation() - 1:
+            yield base_spoof
+    # Otherwise, our base_spoof is incomplete and we will augment it if we can
+    else:
+        upper_bound, lower_bound = base_spoof.k_bounds()
+        if lower_bound <= k and upper_bound <= k:
+            # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately

@@ -47,12 +47,12 @@ def test_count_positives_negatives():
             # assert abs(test_output - ostensible_output) < epsilon
 
 
-def test_product_of_list():
+def test_compute_product_of_list():
     """
-    Tests the product_of_list method.
+    Tests the compute_product_of_list method.
     """
 
-    function_to_test = product_of_list
+    function_to_test = compute_product_of_list
 
     # Create a namedtuple to better organize test case parameters
     TestCase = namedtuple(
@@ -70,6 +70,90 @@ def test_product_of_list():
     ]
     output_list = [
         1, 24, 0, AssertionError,
+    ]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                function_to_test(*test_input)
+        else:
+            test_output = function_to_test(*test_input)
+            # print(f"Test Input: {test_input}\nTest Output: {test_output}\nOstensible Output: {ostensible_output}")
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+
+def test_evaluate():
+    """
+    Tests the evaluate method.
+    """
+
+    function_to_test = evaluate
+
+    # Create a namedtuple to better organize test case parameters
+    TestCase = namedtuple(
+        "TestCase",
+        [
+            "numbers",
+        ],
+    )
+
+    input_list = [
+        TestCase([]),
+        TestCase([i for i in range(1, 5)]),
+        TestCase([i for i in range(-17, 5)]),
+        TestCase(("ABA",)),
+    ]
+    output_list = [
+        1,
+        24,
+        0,
+        AssertionError,
+    ]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                function_to_test(*test_input)
+        else:
+            test_output = function_to_test(*test_input)
+            # print(f"Test Input: {test_input}\nTest Output: {test_output}\nOstensible Output: {ostensible_output}")
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+
+def test_compute_totient():
+    """
+    Tests the compute_totient method.
+    """
+
+    function_to_test = compute_totient
+
+    # Create a namedtuple to better organize test case parameters
+    TestCase = namedtuple(
+        "TestCase",
+        [
+            "numbers",
+        ],
+    )
+
+    input_list = [
+        TestCase([]),
+        TestCase([i + 1 for i in range(1, 5)]),
+        TestCase([i + 1 for i in range(-17, 5)]),
+        TestCase(("ABA",)),
+    ]
+    output_list = [
+        1,
+        24,
+        0,
+        AssertionError,
     ]
     assert len(input_list) == len(output_list)
     for test_input, ostensible_output in zip(input_list, output_list):
