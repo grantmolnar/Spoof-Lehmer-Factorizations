@@ -208,7 +208,21 @@ class partialSpoofLehmerFactorization:
         # self.evaluation = compute_product_of_list(self.factors)
         # self.totient = compute_product_of_list([factor - 1 for factor in self.factors])
 
-    def with_additional_factors(self, **kwargs):  # -> partialSpoofLehmerFactorization
+    def __eq__(self, other):
+        if type(self) != type(other):
+            return False
+        if self.rplus != other.rplus:
+            return False
+        if self.rminus != other.rminus:
+            return False
+        if self.k != other.k:
+            return False
+        if self.factors != other.factors:
+            # This is stronger than checking splus and sminus
+            return False
+        return True
+
+    def with_additional_factor(self, next_factor : int):  # -> partialSpoofLehmerFactorization
         """
         Produces a new instance of spoofLehmerFactorization with additional factors appended to the list of factors.
 
@@ -219,7 +233,7 @@ class partialSpoofLehmerFactorization:
             spoofLehmerFactorization: A new instance of spoofLehmerFactorization with the updated list of factors.
         """
         extended_factors = self.factors.copy()
-        extended_factors += [factor for factor in kwargs.values()]
+        extended_factors.append(next_factor)
         # Create a new instance with the same rplus, rminus, and k values, and the extended_factors list
         return partialSpoofLehmerFactorization(
             rplus=self.rplus, rminus=self.rminus, k=self.k, factors=extended_factors
@@ -246,11 +260,9 @@ class partialSpoofLehmerFactorization:
         """
         Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
         """
-        # If r- is odd, k(F) is increasing in its arguments,
-        # so we let our negative terms be -|maximum magnitude of existing term| and our positive terms be infinity to obtain an upper bound
-        # and we let our negative terms be -infinity and our positive terms be |maximum magnitude of an existing term|
-        # If r- is even, k(F) is decreasing in its arguments so we apply interchanged bounds
-        # The number of new positive terms we will need to augment by
+        # k(F) is decreasing in its arguments
+        # so we let our negative terms be -|maximum magnitude of existing term| and our positive terms be infinity to obtain an lower bound
+        # and we let our negative terms be -infinity and our positive terms be |maximum magnitude of an existing term| to obtain an upper bound
         new_positive_term_count = self.rplus - self.splus
         # The number of new negative terms we will need to augment by
         new_negative_term_count = self.rminus - self.sminus
@@ -267,7 +279,7 @@ class partialSpoofLehmerFactorization:
             self.factors + [negative_term] * new_negative_term_count
         )
         # This is an upper bound if r- % 2 == 1, and a lower bound otherwise
-        bound_1 = Fraction(
+        lower_bound = Fraction(
             evaluate(negative_augmented_factors)
             - (1 if new_positive_term_count == 0 else 0),
             compute_totient(negative_augmented_factors),
@@ -276,15 +288,12 @@ class partialSpoofLehmerFactorization:
             self.factors + [positive_term] * new_positive_term_count
         )
         # This is a lower bound if r- % 2 == 1, and an upper bound otherwise
-        bound_2 = Fraction(
+        upper_bound = Fraction(
             evaluate(positive_augmented_factors)
             - (1 if new_negative_term_count == 0 else 0),
             compute_totient(positive_augmented_factors),
         )
-        if self.rminus % 2 == 1:
-            return (bound_2, bound_1)
-        else:
-            return (bound_1, bound_2)
+        return lower_bound, upper_bound
 
 
 def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
@@ -309,16 +318,15 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
     if base_spoof == None:
         base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors=None)
     # If our base spoof is complete, we check if it works
-    elif (
+
+    if (
         base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus
     ):
+        # print(k, base_spoof.totient(), base_spoof.evaluation() - 1)
         if k * base_spoof.totient() == base_spoof.evaluation() - 1:
             yield base_spoof
     # Otherwise, our base_spoof is incomplete and we will augment it if we can
     else:
-        # TODO
-        # Are we basically doing this twice? Can we cut this check?
-        # upper_bound, lower_bound = base_spoof.k_bounds()
         # If our upper or lower bounds are incompatible with k, there is no need to go further.
         # if lower_bound <= k and upper_bound <= k:
         # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately
@@ -331,22 +339,31 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
         fail_on_negative = False
         # We step by 2 from our start term because we know we want odd factors
         for next_factor in integer_magnitude_iterator(start_term, step=2):
-            augmented_spoof = base_spoof.with_additional_factors(next_factor)
-            augmented_upper_bound, augmented_lower_bound = augmented_spoof.k_bounds()
-            print(augmented_upper_bound, augmented_lower_bound)
-            if k < augmented_lower_bound or k > augmented_upper_bound:
-                if next_factor > 0:
-                    fail_on_positive = True
+            # print(next_factor)
+            if next_factor > 0 and base_spoof.rplus == base_spoof.splus:
+                fail_on_positive = True
+                # print("Failed on positive")
+            elif next_factor < 0 and base_spoof.rminus == base_spoof.sminus:
+                fail_on_negative = True
+                # print("Failed on negative")
+            else:
+                augmented_spoof = base_spoof.with_additional_factor(next_factor)
+                augmented_lower_bound, augmented_upper_bound = augmented_spoof.k_bounds()
+                # print(augmented_lower_bound, k, augmented_upper_bound)
+                # print(k > augmented_upper_bound)
+                if k < augmented_lower_bound or k > augmented_upper_bound:
+                    # print("Inequalities satisfied!")
+                    if next_factor > 0:
+                        fail_on_positive = True
+                        # print("Failed on positive")
+                    else:
+                        fail_on_negative = True
+                        # print("Failed on negative")
                 else:
-                    fail_on_negative = True
+                    # print("Inequalities unsatisfied!")
+                    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+                        rplus, rminus, k, base_spoof=augmented_spoof
+                    ):
+                        yield spoof
                 if fail_on_positive and fail_on_negative:
                     break
-            else:
-                for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
-                    rplus, rminus, k, base_spoof=augmented_spoof
-                ):
-                    yield spoof
-
-
-for t in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(2, 0, 2):
-    print(str(t))

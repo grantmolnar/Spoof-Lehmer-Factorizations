@@ -1,5 +1,14 @@
-from spoof_factorizations import *
-
+from spoof_factorizations import (
+    partialSpoofLehmerFactorization,
+    count_positives_negatives,
+    sort_by_magnitude_then_positivity,
+    integer_magnitude_iterator,
+    compute_product_of_list,
+    evaluate,
+    compute_totient,
+    yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k,
+)
+from fractions import Fraction
 from collections import namedtuple
 import numpy as np
 import pytest
@@ -283,3 +292,101 @@ def test_compute_totient():
             # print(f"Test Input: {test_input}\nTest Output: {test_output}\nOstensible Output: {ostensible_output}")
             assert test_output == ostensible_output
             # assert abs(test_output - ostensible_output) < epsilon
+
+
+def test_k_bounds():
+    """
+    Tests the k_bounds method.
+    """
+
+    input_list = [
+        partialSpoofLehmerFactorization(2, 0, 2, [3]),
+        partialSpoofLehmerFactorization(2, 0, 2, [3, 3]),
+    ]
+    output_list = [(Fraction(3, 2), Fraction(2, 1)), (Fraction(2, 1), Fraction(2, 1))]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                test_input.k_bounds()
+        else:
+            test_output = test_input.k_bounds()
+            # print(
+            #     f"Test Input: {test_input}\nTest Output: {test_output}\nOstensible Output: {ostensible_output}"
+            # )
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+def test_with_additional_factor():
+    """
+    Tests the with_additional_factor method.
+    """
+    TestCase = namedtuple(
+        "TestCase",
+        [
+            "spoof",
+            "additional_factors"
+        ],
+    )
+    input_list = [
+        TestCase(partialSpoofLehmerFactorization(2, 0, 2, [3]), 3)
+    ]
+    output_list = [partialSpoofLehmerFactorization(2, 0, 2, [3, 3])]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                test_input[0].with_additional_factor(test_input[1])
+        else:
+            test_output = test_input[0].with_additional_factor(test_input[1])
+            print(
+                f"Test Input: {test_input}\nTest Output: {str(test_output)}\nOstensible Output: {str(ostensible_output)}"
+            )
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+def test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k():
+    """
+    Tests the yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k method.
+    """
+
+    function_to_test = yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k
+
+    # Create a namedtuple to better organize test case parameters
+    TestCase = namedtuple(
+        "TestCase",
+        [
+            "rplus",
+            "rminus",
+            "k",
+            "base_spoof",
+        ],
+    )
+
+    input_list = [
+        TestCase(2, 0, 2, None),
+    ]
+    output_list = [
+        [partialSpoofLehmerFactorization(2, 0, 2, [3, 3])],
+    ]
+    assert len(input_list) == len(output_list)
+    for test_input, ostensible_output in zip(input_list, output_list):
+        if isinstance(ostensible_output, type) and issubclass(
+            ostensible_output, Exception
+        ):
+            # Test case is expected to raise an exception
+            with pytest.raises(ostensible_output):
+                [x for x in function_to_test(*test_input)]
+        else:
+            test_output = [x for x in function_to_test(*test_input)]
+            print(f"Test Input: {test_input}\nTest Output: {[str(output) for output in test_output]}\nOstensible Output: {[str(output) for output in ostensible_output]}")
+            assert test_output == ostensible_output
+            # assert abs(test_output - ostensible_output) < epsilon
+
+# test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k()
