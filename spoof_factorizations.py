@@ -25,6 +25,7 @@ from collections import Counter
 
 # Notably, we do not (yet) use any congruence conditions on the factors
 
+
 def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
     """
     Counts the positive and negative integers in a given list.
@@ -42,7 +43,9 @@ def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
                          and the second element is the count of negative integers in the list.
     """
     # We confirm every element of numbers is a real number
-    assert all(isinstance(elem, (int, float, Fraction)) for elem in numbers)
+    assert all(
+        isinstance(elem, (int, float, Fraction)) for elem in numbers
+    ), "Our list of numbers should consist solely of numbers"
     # Create a Counter object by categorizing each number in the list based on its sign.
     # This approach iterates through 'numbers', applying a conditional expression to each
     # element to categorize it, and then counts the occurrences of each category.
@@ -57,24 +60,6 @@ def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
     negative_count = counter["negative"]
 
     return positive_count, negative_count
-
-def compute_product_of_list(numbers: List[int]) -> int:
-    """
-    Calculates the product of all integers in a given list.
-    
-    Parameters:
-        numbers (List[int]): A list of integers whose product is to be found.
-        
-    Returns:
-        int: The product of all integers in the list. Returns 1 for an empty list.
-    
-    Example:
-        >>> compute_product_of_list([1, 2, 3, 4])
-        24
-    """
-    output = reduce(operator.mul, numbers, 1)
-    assert isinstance(output, int)
-    return output
 
 
 def sort_by_magnitude_then_positivity(numbers: List[int]) -> List[int]:
@@ -113,6 +98,7 @@ def integer_magnitude_iterator(start: int, step: int = 1) -> Iterator[int]:
     Yields:
         int: The next integer in the sequence.
     """
+    assert step > 0, "Step size must be greater than 0"
     n = start
     if n <= 0:
         yield n
@@ -121,6 +107,25 @@ def integer_magnitude_iterator(start: int, step: int = 1) -> Iterator[int]:
         yield n
         yield -n
         n += step
+
+
+def compute_product_of_list(numbers: List[int]) -> int:
+    """
+    Calculates the product of all integers in a given list.
+
+    Parameters:
+        numbers (List[int]): A list of integers whose product is to be found.
+
+    Returns:
+        int: The product of all integers in the list. Returns 1 for an empty list.
+
+    Example:
+        >>> compute_product_of_list([1, 2, 3, 4])
+        24
+    """
+    output = reduce(operator.mul, numbers, 1)
+    assert isinstance(output, int), "We define our product only on integer inputs"
+    return output
 
 
 def evaluate(numbers) -> int:
@@ -139,6 +144,7 @@ def evaluate(numbers) -> int:
     """
     return compute_product_of_list(numbers)
 
+
 def compute_totient(numbers) -> List[int]:
     """
     Returns the product of the elements of our list, each with 1 subtracted
@@ -154,6 +160,7 @@ def compute_totient(numbers) -> List[int]:
         0
     """
     return compute_product_of_list([factor - 1 for factor in numbers])
+
 
 class partialSpoofLehmerFactorization:
     """
@@ -192,26 +199,34 @@ class partialSpoofLehmerFactorization:
         # The number of positive and negative terms our factorization has so far
         self.splus, self.sminus = count_positives_negatives(self.factors)
         # The number of positive and negative factors we have should not exceed the number we *can* have
-        assert self.splus <= self.rplus and self.sminus <= self.rminus
+        assert (
+            self.splus <= self.rplus
+        ), f"The number of positive factors given, {self.splus}, must be less than or equal to the number of positive factors required, {self.rplus}"
+        assert (
+            self.sminus <= self.rminus
+        ), f"The number of negative factors given, {self.sminus}, must be less than or equal to the number of positive factors required, {self.rminus}"
         # self.evaluation = compute_product_of_list(self.factors)
         # self.totient = compute_product_of_list([factor - 1 for factor in self.factors])
 
-    def with_additional_factors(self, **kwargs): #-> partialSpoofLehmerFactorization
+    def with_additional_factors(self, **kwargs):  # -> partialSpoofLehmerFactorization
         """
         Produces a new instance of spoofLehmerFactorization with additional factors appended to the list of factors.
-        
+
         Parameters:
             kwargs are new factors we can include
-        
+
         Returns:
             spoofLehmerFactorization: A new instance of spoofLehmerFactorization with the updated list of factors.
         """
         extended_factors = self.factors.copy()
         extended_factors += [factor for factor in kwargs.values()]
         # Create a new instance with the same rplus, rminus, and k values, and the extended_factors list
-        return partialSpoofLehmerFactorization(rplus=self.rplus, rminus=self.rminus, k=self.k, factors=extended_factors)
+        return partialSpoofLehmerFactorization(
+            rplus=self.rplus, rminus=self.rminus, k=self.k, factors=extended_factors
+        )
 
         return new_instance
+
     def __str__(self) -> str:
         """
         Provides a human-readable string representation of the partialSpoofLehmerFactorization instance.
@@ -236,9 +251,9 @@ class partialSpoofLehmerFactorization:
         # and we let our negative terms be -infinity and our positive terms be |maximum magnitude of an existing term|
         # If r- is even, k(F) is decreasing in its arguments so we apply interchanged bounds
         # The number of new positive terms we will need to augment by
-        new_positive_term_count = self.rplus - self.splus 
+        new_positive_term_count = self.rplus - self.splus
         # The number of new negative terms we will need to augment by
-        new_negative_term_count = self.rminus - self.sminus 
+        new_negative_term_count = self.rminus - self.sminus
 
         if len(self.factors) > 0:
             # Our negative term is the smallest negative it can be
@@ -248,22 +263,36 @@ class partialSpoofLehmerFactorization:
             # If our list was empty before, the smallest it can be is -3
             negative_term = -3
             positive_term = 3
-        negative_augmented_factors = self.factors + [negative_term] * new_negative_term_count
+        negative_augmented_factors = (
+            self.factors + [negative_term] * new_negative_term_count
+        )
         # This is an upper bound if r- % 2 == 1, and a lower bound otherwise
-        bound_1 = Fraction(evaluate(negative_augmented_factors) - (1 if new_positive_term_count == 0 else 0), compute_totient(negative_augmented_factors))
-        positive_augmented_factors = self.factors + [positive_term] * new_positive_term_count
+        bound_1 = Fraction(
+            evaluate(negative_augmented_factors)
+            - (1 if new_positive_term_count == 0 else 0),
+            compute_totient(negative_augmented_factors),
+        )
+        positive_augmented_factors = (
+            self.factors + [positive_term] * new_positive_term_count
+        )
         # This is a lower bound if r- % 2 == 1, and an upper bound otherwise
         bound_2 = Fraction(
-                evaluate(positive_augmented_factors)
-                - (1 if new_negative_term_count == 0 else 0),
-                compute_totient(positive_augmented_factors),
-            )
+            evaluate(positive_augmented_factors)
+            - (1 if new_negative_term_count == 0 else 0),
+            compute_totient(positive_augmented_factors),
+        )
         if self.rminus % 2 == 1:
             return (bound_2, bound_1)
         else:
             return (bound_1, bound_2)
 
-def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rminus: int, k : int, base_spoof : Optional[partialSpoofLehmerFactorization] = None)-> Iterator[partialSpoofLehmerFactorization]:
+
+def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+    rplus: int,
+    rminus: int,
+    k: int,
+    base_spoof: Optional[partialSpoofLehmerFactorization] = None,
+) -> Iterator[partialSpoofLehmerFactorization]:
     """
     Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
 
@@ -278,10 +307,12 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
     """
     # If our base spoof is none, we initialize an empty spoof
     if base_spoof == None:
-        base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors = None)
+        base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors=None)
     # If our base spoof is complete, we check if it works
-    elif base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus:
-        if k*base_spoof.totient() == base_spoof.evaluation() - 1:
+    elif (
+        base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus
+    ):
+        if k * base_spoof.totient() == base_spoof.evaluation() - 1:
             yield base_spoof
     # Otherwise, our base_spoof is incomplete and we will augment it if we can
     else:
@@ -301,9 +332,8 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
         # We step by 2 from our start term because we know we want odd factors
         for next_factor in integer_magnitude_iterator(start_term, step=2):
             augmented_spoof = base_spoof.with_additional_factors(next_factor)
-            augmented_upper_bound, augmented_lower_bound = (
-                augmented_spoof.k_bounds()
-            )
+            augmented_upper_bound, augmented_lower_bound = augmented_spoof.k_bounds()
+            print(augmented_upper_bound, augmented_lower_bound)
             if k < augmented_lower_bound or k > augmented_upper_bound:
                 if next_factor > 0:
                     fail_on_positive = True
@@ -312,8 +342,11 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus : int, rmin
                 if fail_on_positive and fail_on_negative:
                     break
             else:
-                for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(rplus, rminus, k, base_spoof = augmented_spoof):
+                for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+                    rplus, rminus, k, base_spoof=augmented_spoof
+                ):
                     yield spoof
+
 
 for t in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(2, 0, 2):
     print(str(t))
