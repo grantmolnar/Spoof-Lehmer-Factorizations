@@ -3,7 +3,7 @@ from fractions import Fraction
 from functools import reduce
 import operator
 from collections import Counter
-
+from math import floor, ceil
 # Let F = x1 ... xr be a spoof factorization all of whose exponents are 1
 # We define F.evaluation = x1 * ... * xr, and F.totient = (x1 - 1) * ... * (xr - 1)
 # We say F is nontrivial if xi != 0, 1 for all i. Necessarily, this also implies xi != -1.
@@ -301,19 +301,21 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
     rminus: int,
     k: int,
     base_spoof: Optional[partialSpoofLehmerFactorization] = None,
+    verbose : bool = True
 ) -> Iterator[partialSpoofLehmerFactorization]:
     """
-    Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
+    Yields all interesting spoof Lehmer factorizations with given rplus, rminus, and k.
 
     Parameters:
             rplus (int): The positive component of the factorization.
             rminus (int): The negative component of the factorization.
-            k (Optional[int]): An optional adjustment parameter, which we'd like to satisfy k * phi(F) = e(F) - 1
+            k (int): An optional adjustment parameter, which we'd like to satisfy k * phi(F) = e(F) - 1
             factors (Optional[List[int]]): An optional list of factor integers. Defaults to None.
 
     Yields:
         All nontrivial odd spoof Lehmer factorizations with rplus positive factors, rminus negative factors, and such that k = (evaluate(F) - 1)/(compute_totient(F))
     """
+    assert rplus + rminus > 1, "Our methods only apply if we have at least two factors"
     # If our base spoof is none, we initialize an empty spoof
     if base_spoof == None:
         base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors=None)
@@ -349,7 +351,8 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
             else:
                 augmented_spoof = base_spoof.with_additional_factor(next_factor)
                 augmented_lower_bound, augmented_upper_bound = augmented_spoof.k_bounds()
-                # print(augmented_lower_bound, k, augmented_upper_bound)
+                # if verbose:
+                #    print(augmented_lower_bound, k, augmented_upper_bound)
                 # print(k > augmented_upper_bound)
                 if k < augmented_lower_bound or k > augmented_upper_bound:
                     # print("Inequalities satisfied!")
@@ -362,8 +365,70 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                 else:
                     # print("Inequalities unsatisfied!")
                     for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
-                        rplus, rminus, k, base_spoof=augmented_spoof
+                        rplus, rminus, k, base_spoof=augmented_spoof, verbose = verbose
                     ):
                         yield spoof
                 if fail_on_positive and fail_on_negative:
                     break
+
+
+def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
+    rplus: int,
+    rminus: int,
+    base_spoof: Optional[partialSpoofLehmerFactorization] = None,
+    verbose: bool = True,
+) -> Iterator[partialSpoofLehmerFactorization]:
+    """
+        Yields all interesting spoof Lehmer factorizations with given rplus, rminus.
+
+
+    Parameters:
+            rplus (int): The positive component of the factorization.
+            rminus (int): The negative component of the factorization.
+            factors (Optional[List[int]]): An optional list of factor integers. Defaults to None.
+
+    Yields:
+        All nontrivial odd spoof Lehmer factorizations with rplus positive factors and rminus negative factors.
+    """
+    # Our total number of factors
+    r = rplus + rminus
+    assert r > 1, "Our methods only apply if we have at least two factors"
+    # We establish the bounds within which we need to work
+    if base_spoof == None:
+        lower_bound, upper_bound = partialSpoofLehmerFactorization(
+            rplus, rminus, None, factors=None
+        ).k_bounds()
+    else:
+        lower_bound, upper_bound = base_spoof.k_bounds()
+    # For each of these bounds, we see what happens
+    for k in range(ceil(lower_bound), floor(upper_bound) + 1):
+        if verbose:
+            print(f"k = {k}")
+        if k != 1: # We should think more about this case and see if we can solve it in general! We're hackily avoiding the case n*(2 - n) right now
+            for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+                rplus, rminus, k, base_spoof = base_spoof, verbose=verbose
+            ):
+                yield spoof
+
+
+def yield_all_spoof_Lehmer_factorizations_given_r(
+    r: int,
+    verbose: bool = True,
+) -> Iterator[partialSpoofLehmerFactorization]:
+    """
+        Yields all interesting spoof Lehmer factorizations with given r.
+
+
+    Parameters:
+            r (int): The number of factors in our factorization.
+
+    Yields:
+        All nontrivial odd spoof Lehmer factorizations with r factors.
+    """
+    assert r > 1, "Our methods only apply if we have at least two factors"
+    for rplus in range(0, r + 1):
+        rminus = r - rplus
+        if verbose:
+            print(f"rplus = {rplus}, rminus = {rminus}")
+        for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(rplus, rminus, verbose = verbose):
+            yield spoof
