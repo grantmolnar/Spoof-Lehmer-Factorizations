@@ -342,36 +342,37 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
         # We step by 2 from our start term because we know we want odd factors
         for next_factor in integer_magnitude_iterator(start_term, step=2):
             # print(next_factor)
+            if next_factor > 0 and base_spoof.rplus == base_spoof.splus:
+                fail_on_positive = True
+                # print("Failed on positive")
+            elif next_factor < 0 and base_spoof.rminus == base_spoof.sminus:
+                fail_on_negative = True
+                # print("Failed on negative")
             # We use the congruence condition from Theorem 2 of Lehmer's paper to discard as man cases as we can
-            if all(next_factor % p != 1 for p in base_spoof.factors):
-                if next_factor > 0 and base_spoof.rplus == base_spoof.splus:
-                    fail_on_positive = True
-                    # print("Failed on positive")
-                elif next_factor < 0 and base_spoof.rminus == base_spoof.sminus:
-                    fail_on_negative = True
-                    # print("Failed on negative")
-                else:
-                    augmented_spoof = base_spoof.with_additional_factor(next_factor)
-                    augmented_lower_bound, augmented_upper_bound = augmented_spoof.k_bounds()
-                    # if verbose:
-                    #    print(augmented_lower_bound, k, augmented_upper_bound)
-                    # print(k > augmented_upper_bound)
-                    if k < augmented_lower_bound or k > augmented_upper_bound:
-                        # print("Inequalities satisfied!")
-                        if next_factor > 0:
-                            fail_on_positive = True
-                            # print("Failed on positive")
-                        else:
-                            fail_on_negative = True
-                            # print("Failed on negative")
+            elif all(next_factor % p != 1 for p in base_spoof.factors):
+                augmented_spoof = base_spoof.with_additional_factor(next_factor)
+                augmented_lower_bound, augmented_upper_bound = (
+                    augmented_spoof.k_bounds()
+                )
+                # if verbose:
+                #    print(augmented_lower_bound, k, augmented_upper_bound)
+                # print(k > augmented_upper_bound)
+                if k < augmented_lower_bound or k > augmented_upper_bound:
+                    # print("Inequalities satisfied!")
+                    if next_factor > 0:
+                        fail_on_positive = True
+                        # print("Failed on positive")
                     else:
-                        # print("Inequalities unsatisfied!")
-                        for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+                        fail_on_negative = True
+                        # print("Failed on negative")
+                else:
+                    # print("Inequalities unsatisfied!")
+                    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                             rplus, rminus, k, base_spoof=augmented_spoof, verbose = verbose
                         ):
-                            yield spoof
-                    if fail_on_positive and fail_on_negative:
-                        break
+                        yield spoof
+                if fail_on_positive and fail_on_negative:
+                    break
 
 
 def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
