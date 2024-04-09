@@ -34,6 +34,8 @@ def count_positives_negatives(numbers: List[int]) -> Tuple[int, int]:
         Tuple[int, int]: A tuple where the first element is the count of positive integers,
                          and the second element is the count of negative integers in the list.
     """
+    # We confirm every element of numbers is a real number
+    assert all(isinstance(elem, (int, float, Fraction)) for elem in numbers)
     # Create a Counter object by categorizing each number in the list based on its sign.
     # This approach iterates through 'numbers', applying a conditional expression to each
     # element to categorize it, and then counts the occurrences of each category.
@@ -89,6 +91,37 @@ def sort_by_magnitude_then_positivity(numbers: List[int]) -> List[int]:
     # checking if the number is negative to influence the secondary sort criteria.
     return sorted(numbers, key=lambda x: (abs(x), 1 if x < 0 else 0))
 
+def evaluate(numbers) -> int:
+    """
+    Returns the product of the elements of our list
+
+    Parameters:
+        numbers (List[int]): A list of integers to be multiplied
+
+    Returns:
+        int: The product of the elements of our list
+
+    Example:
+        >>> evaluate([-2, -1, 1, 2, 3, -3])
+        -36
+    """
+    return product_of_list(numbers)
+
+def compute_totient(numbers) -> List[int]:
+    """
+    Returns the product of the elements of our list, each with 1 subtracted
+
+    Parameters:
+        numbers (List[int]): A list of integers to be multiplied after subtracting 1
+
+    Returns:
+        int: The product of the elements of our list
+
+    Example:
+        >>> evaluate([-2, -1, 1, 2, 3, -3])
+        0
+    """
+    return product_of_list([factor - 1 for factor in numbers])
 
 class partialSpoofLehmerFactorization:
     """
@@ -126,8 +159,27 @@ class partialSpoofLehmerFactorization:
         self.rplus, self.rminus = rplus, rminus
         # The number of positive and negative terms our factorization has so far
         self.splus, self.sminus = count_positives_negatives(self.factors)
-        self.evaluation = product_of_list(self.factors)
+        # The number of positive and negative factors we have should not exceed the number we *can* have
+        assert self.splus <= self.rplus and self.sminus <= self.rminus
+        # self.evaluation = product_of_list(self.factors)
+        # self.totient = product_of_list([factor - 1 for factor in self.factors])
 
+    def with_additional_factors(self, **kwargs): #-> partialSpoofLehmerFactorization
+        """
+        Produces a new instance of spoofLehmerFactorization with additional factors appended to the list of factors.
+        
+        Parameters:
+            kwargs are new factors we can include
+        
+        Returns:
+            spoofLehmerFactorization: A new instance of spoofLehmerFactorization with the updated list of factors.
+        """
+        extended_factors = self.factors.copy()
+        extended_factors += [factor for factor in kwargs.values()]
+        # Create a new instance with the same rplus, rminus, and k values, and the extended_factors list
+        return partialSpoofLehmerFactorization(rplus=self.rplus, rminus=self.rminus, k=self.k, factors=extended_factors)
+
+        return new_instance
     def __str__(self) -> str:
         """
         Provides a human-readable string representation of the partialSpoofLehmerFactorization instance.
@@ -137,12 +189,38 @@ class partialSpoofLehmerFactorization:
         """
         return f"partialSpoofLehmerFactorization(rplus={self.rplus}, rminus={self.rminus}, k={self.k}, factors={self.factors})"
 
-    def kUpper(self) -> Fraction:
+    def kBounds(self) -> Tuple[Fraction, Fraction]:
         """
-        Returns an upper bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
+        Returns an upper and lower bound on how large the ratio k(F) = F.evaluation/F.totient can be for F a (nontrivial odd) spoof factorization extending self compatible with our rplus and rminus conditions, and under the sorting asserted by sort_by_magnitude_then_positivity.
         """
-        # If r- is odd, k(F) is increasing in its arguments so we let our negative terms be -|maximum magnitude of existing term| and our positive terms be infinity
+        # If r- is odd, k(F) is increasing in its arguments,
+        # so we let our negative terms be -|maximum magnitude of existing term| and our positive terms be infinity to obtain an upper bound
+        # and we let our negative terms be -infinity and our positive terms be |maximum magnitude of an existing term|
+        # If r- is even, k(F) is decreasing in its arguments so we apply interchanged bounds
+        # The number of new positive terms we will need to augment by
+        new_positive_term_count = self.rplus - self.splus 
+        # The number of new negative terms we will need to augment by
+        new_negative_term_count = self.rminus - self.sminus 
+
+        if len(self.factors) > 0:
+            # Our negative term is the smallest negative it can be
+            negative_term = -abs(self.factors[-1])
+            positive_term = abs(self.factors[-1])
+        else:
+            # If our list was empty before, the smallest it can be is -3
+            negative_term = -3
+            positive_term = 3
+        negative_augmented_factors = self.factors + [negative_term] * new_negative_term_count
+        # This is an upper bound if r- % 2 == 1, and a lower bound otherwise
+        bound_1 = Fraction(evaluate(negative_augmented_factors) - (1 if new_positive_term_count == 0 else 0), compute_totient(negative_augmented_factors))
+        positive_augmented_factors = self.factors + [positive_term] * new_positive_term_count
+        # This is a lower bound if r- % 2 == 1, and an upper bound otherwise
+        bound_2 = Fraction(
+                evaluate(positive_augmented_factors)
+                - (1 if new_negative_term_count == 0 else 0),
+                compute_totient(positive_augmented_factors),
+            )
         if self.rminus % 2 == 1:
-
-        # If r- is even, k(F) is decreasing in its arguments so we let our negative terms be -infinity and our positive terms be |maximum magnitude of an existing term|
-
+            return (bound_2, bound_1)
+        else:
+            return (bound_1, bound_2)
