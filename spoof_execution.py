@@ -1,5 +1,6 @@
 from time import time
-from spoof_factorizations import partialSpoofLehmerFactorization, yield_all_spoof_Lehmer_factorizations_given_r
+from collections import deque
+from spoof_factorizations import partialSpoofLehmerFactorization, yield_all_spoof_Lehmer_factorizations_given_r, yield_all_spoof_Lehmer_factorizations_given_rplus_rminus
 import os
 
 # We wish to pick our investigations where we left them off
@@ -9,7 +10,10 @@ spoofs_file_path = "filestore/spoofs.txt"
 duration_file_path = "filestore/spoof_durations.txt"
 if os.path.exists(duration_file_path):
     with open(duration_file_path, "r") as file:
-        for line in file:
+        # Create a deque with all lines, deque automatically discards the oldest items if it reaches max length
+        lines = deque(file, maxlen=None)  # Set maxlen=None to keep all lines
+
+        for line in reversed(lines):
             # Remove trailing whitespace
             line = line.rstrip()
             # Check if line is not empty and contains a colon
@@ -33,7 +37,8 @@ else:
 while True:
     print(r)
     startTime = time()
-    for spoof in yield_all_spoof_Lehmer_factorizations_given_r(r):
+#    for spoof in yield_all_spoof_Lehmer_factorizations_given_r(r):
+    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(r, 0, verbose=True):
         with open(spoofs_file_path, "a") as file:
             print(str(spoof))
             file.write(str(spoof))

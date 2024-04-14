@@ -405,15 +405,18 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
         ).k_bounds()
     else:
         lower_bound, upper_bound = base_spoof.k_bounds()
+    lower_bound, upper_bound = ceil(lower_bound), floor(upper_bound)
+    if verbose:
+        print(f"k lies between {lower_bound} and {upper_bound}, inclusive")
     # For each of these bounds, we see what happens
-    for k in range(ceil(lower_bound), floor(upper_bound) + 1):
+    for k in range(lower_bound, upper_bound + 1):
         if verbose:
             print(f"k = {k}")
-        if k != 1: # We should think more about this case and see if we can solve it in general! We're hackily avoiding the case n*(2 - n) right now
-            for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
-                rplus, rminus, k, base_spoof = base_spoof, verbose=verbose
-            ):
-                yield spoof
+        # if not (k == 1): # and r == 2): # If k = 1 and r = 2, the solutions are all of the form n*(2 - n) 
+        for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+            rplus, rminus, k, base_spoof = base_spoof, verbose=verbose
+        ):
+            yield spoof
 
 
 def yield_all_spoof_Lehmer_factorizations_given_r(

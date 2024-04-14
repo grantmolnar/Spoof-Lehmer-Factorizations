@@ -1,0 +1,2 @@
+partialSpoofLehmerFactorization(rplus=2, rminus=0, k=2, factors=[3, 3])
+partialSpoofLehmerFactorization(rplus=4, rminus=0, k=5, factors=[3, 3, 3, 3])
