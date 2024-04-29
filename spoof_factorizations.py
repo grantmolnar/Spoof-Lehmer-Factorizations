@@ -339,21 +339,28 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
         # Even if the current case is impossible, we need to double-check the next case, too, because positive and negative terms are different. After that, we're good
         fail_on_positive = False
         fail_on_negative = False
+
+        # This is the shared limit of U and L as |next_factor| -> infinity
+        shared_limit = Fraction(base_spoof.evaluation(), base_spoof.totient())
+        # We have three cases: shared_limit > k, shared_limit == k, or shared_limit < k
+
         # We step by 2 from our start term because we know we want odd factors
         for next_factor in integer_magnitude_iterator(start_term, step=2):
-            # If neither positive nor factors work, we move on
+            # If neither positive nor negative factors work, we move on
             if fail_on_positive and fail_on_negative:
                 break
 
             # print(next_factor)
+            # If we try to append a positive factor and all our positive factors are already included, we stop trying for positive factors
             if next_factor > 0 and base_spoof.rplus == base_spoof.splus:
                 fail_on_positive = True
                 # print("Failed on positive")
+            # If we try to append a negative factor and all our negative factors are already included, we stop trying for negative factors
             elif next_factor < 0 and base_spoof.rminus == base_spoof.sminus:
                 fail_on_negative = True
                 # print("Failed on negative")
             # We use the congruence condition from Theorem 2 of Lehmer's paper to discard as man cases as we can
-            elif all(next_factor % p != 1 for p in base_spoof.factors):
+            elif all(next_factor % p not in [1, p - 1] for p in base_spoof.factors):
                 augmented_spoof = base_spoof.with_additional_factor(next_factor)
                 augmented_lower_bound, augmented_upper_bound = (
                     augmented_spoof.k_bounds()
@@ -361,15 +368,24 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                 # if verbose:
                 #    print(augmented_lower_bound, k, augmented_upper_bound)
                 # print(k > augmented_upper_bound)
-                if k < augmented_lower_bound or k > augmented_upper_bound:
+                # If k < augmented_lower_bound this spoof won't work
+                # Also, if the last factor was positive, then making it bigger and positive is only going to make the result smaler
+                if k < augmented_lower_bound and next_factor > 0:
+                    fail_on_positive = True
+                elif k > augmented_upper_bound and next_factor < 0:
+                    fail_on_negative = True
+                elif k > augmented_upper_bound:
                     # print("Inequalities satisfied!")
+                    # If a positive factor appended leads to issues, making that factor bigger won't solve them
                     if next_factor > 0:
                         fail_on_positive = True
                         # print("Failed on positive")
+                    # If a negative factor appended leads to issues, making that factor more negative won't solve them
                     else:
                         fail_on_negative = True
                         # print("Failed on negative")
                 else:
+                    # We can be more refined in our handling of infinities
                     # print("Inequalities unsatisfied!")
                     for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                             rplus, rminus, k, base_spoof=augmented_spoof, verbose = verbose
