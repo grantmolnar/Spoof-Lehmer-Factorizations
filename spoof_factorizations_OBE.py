@@ -4,6 +4,7 @@ from functools import reduce
 import operator
 from collections import Counter
 from math import floor, ceil
+
 # Let F = x1 ... xr be a spoof factorization all of whose exponents are 1
 # We define F.evaluation = x1 * ... * xr, and F.totient = (x1 - 1) * ... * (xr - 1)
 # We say F is nontrivial if xi != 0, 1 for all i. Necessarily, this also implies xi != -1.
@@ -222,7 +223,9 @@ class partialSpoofLehmerFactorization:
             return False
         return True
 
-    def with_additional_factor(self, next_factor : int):  # -> partialSpoofLehmerFactorization
+    def with_additional_factor(
+        self, next_factor: int
+    ):  # -> partialSpoofLehmerFactorization
         """
         Produces a new instance of spoofLehmerFactorization with additional factors appended to the list of factors.
 
@@ -301,7 +304,7 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
     rminus: int,
     k: int,
     base_spoof: Optional[partialSpoofLehmerFactorization] = None,
-    verbose : bool = True
+    verbose: bool = True,
 ) -> Iterator[partialSpoofLehmerFactorization]:
     """
     Yields all interesting spoof Lehmer factorizations with given rplus, rminus, and k.
@@ -321,9 +324,7 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
         base_spoof = partialSpoofLehmerFactorization(rplus, rminus, k, factors=None)
     # If our base spoof is complete, we check if it works
 
-    if (
-        base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus
-    ):
+    if base_spoof.rplus == base_spoof.splus and base_spoof.rminus == base_spoof.sminus:
         # print(k, base_spoof.totient(), base_spoof.evaluation() - 1)
         if k * base_spoof.totient() == base_spoof.evaluation() - 1:
             yield base_spoof
@@ -362,9 +363,10 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
             # We use the congruence condition from Theorem 2 of Lehmer's paper to discard as man cases as we can
             elif all(next_factor % p not in [1, p - 1] for p in base_spoof.factors):
                 augmented_spoof = base_spoof.with_additional_factor(next_factor)
-                augmented_lower_bound, augmented_upper_bound = (
-                    augmented_spoof.k_bounds()
-                )
+                (
+                    augmented_lower_bound,
+                    augmented_upper_bound,
+                ) = augmented_spoof.k_bounds()
                 # if verbose:
                 #    print(augmented_lower_bound, k, augmented_upper_bound)
                 # print(k > augmented_upper_bound)
@@ -387,9 +389,11 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
                 else:
                     # We can be more refined in our handling of infinities
                     # print("Inequalities unsatisfied!")
-                    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
-                            rplus, rminus, k, base_spoof=augmented_spoof, verbose = verbose
-                        ):
+                    for (
+                        spoof
+                    ) in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
+                        rplus, rminus, k, base_spoof=augmented_spoof, verbose=verbose
+                    ):
                         yield spoof
 
 
@@ -428,9 +432,9 @@ def yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
     for k in range(lower_bound, upper_bound + 1):
         if verbose:
             print(f"k = {k}")
-        # if not (k == 1): # and r == 2): # If k = 1 and r = 2, the solutions are all of the form n*(2 - n) 
+        # if not (k == 1): # and r == 2): # If k = 1 and r = 2, the solutions are all of the form n*(2 - n)
         for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k(
-            rplus, rminus, k, base_spoof = base_spoof, verbose=verbose
+            rplus, rminus, k, base_spoof=base_spoof, verbose=verbose
         ):
             yield spoof
 
@@ -454,5 +458,7 @@ def yield_all_spoof_Lehmer_factorizations_given_r(
         rminus = r - rplus
         if verbose:
             print(f"rplus = {rplus}, rminus = {rminus}")
-        for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(rplus, rminus, verbose = verbose):
+        for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
+            rplus, rminus, verbose=verbose
+        ):
             yield spoof

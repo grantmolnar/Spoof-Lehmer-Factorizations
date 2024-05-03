@@ -1,6 +1,10 @@
 from time import time
 from collections import deque
-from spoof_factorizations import partialSpoofLehmerFactorization, yield_all_spoof_Lehmer_factorizations_given_r, yield_all_spoof_Lehmer_factorizations_given_rplus_rminus
+from spoof_factorizations_OBE import (
+    partialSpoofLehmerFactorization,
+    yield_all_spoof_Lehmer_factorizations_given_r,
+    yield_all_spoof_Lehmer_factorizations_given_rplus_rminus,
+)
 import os
 
 # We wish to pick our investigations where we left them off
@@ -37,8 +41,10 @@ else:
 while True:
     print(r)
     startTime = time()
-#    for spoof in yield_all_spoof_Lehmer_factorizations_given_r(r):
-    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(r, 0, verbose=True):
+    #    for spoof in yield_all_spoof_Lehmer_factorizations_given_r(r):
+    for spoof in yield_all_spoof_Lehmer_factorizations_given_rplus_rminus(
+        r, 0, verbose=True
+    ):
         with open(spoofs_file_path, "a") as file:
             print(str(spoof))
             file.write(str(spoof))

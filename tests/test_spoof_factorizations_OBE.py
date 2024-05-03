@@ -1,4 +1,4 @@
-from spoof_factorizations import (
+from spoof_factorizations_OBE import (
     partialSpoofLehmerFactorization,
     count_positives_negatives,
     sort_by_magnitude_then_positivity,
@@ -320,20 +320,16 @@ def test_k_bounds():
             assert test_output == ostensible_output
             # assert abs(test_output - ostensible_output) < epsilon
 
+
 def test_with_additional_factor():
     """
     Tests the with_additional_factor method.
     """
     TestCase = namedtuple(
         "TestCase",
-        [
-            "spoof",
-            "additional_factors"
-        ],
+        ["spoof", "additional_factors"],
     )
-    input_list = [
-        TestCase(partialSpoofLehmerFactorization(2, 0, 2, [3]), 3)
-    ]
+    input_list = [TestCase(partialSpoofLehmerFactorization(2, 0, 2, [3]), 3)]
     output_list = [partialSpoofLehmerFactorization(2, 0, 2, [3, 3])]
     assert len(input_list) == len(output_list)
     for test_input, ostensible_output in zip(input_list, output_list):
@@ -350,6 +346,7 @@ def test_with_additional_factor():
             )
             assert test_output == ostensible_output
             # assert abs(test_output - ostensible_output) < epsilon
+
 
 def test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k():
     """
@@ -385,8 +382,11 @@ def test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k():
                 [x for x in function_to_test(*test_input)]
         else:
             test_output = [x for x in function_to_test(*test_input)]
-            print(f"Test Input: {test_input}\nTest Output: {[str(output) for output in test_output]}\nOstensible Output: {[str(output) for output in ostensible_output]}")
+            print(
+                f"Test Input: {test_input}\nTest Output: {[str(output) for output in test_output]}\nOstensible Output: {[str(output) for output in ostensible_output]}"
+            )
             assert test_output == ostensible_output
             # assert abs(test_output - ostensible_output) < epsilon
+
 
 # test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k()
