@@ -144,8 +144,8 @@ def test_k_bounds():
     """
 
     input_list = [
-        partialPositiveSpoofLehmerFactorization(2, 2, [3]),
-        partialPositiveSpoofLehmerFactorization(2, 2, [3, 3]),
+        partialPositiveSpoofLehmerFactorization(2, 2, [3], is_even=False),
+        partialPositiveSpoofLehmerFactorization(2, 2, [3, 3], is_even=False),
     ]
     output_list = [(Fraction(3, 2), Fraction(2, 1)), (Fraction(2, 1), Fraction(2, 1))]
     assert len(input_list) == len(output_list)
@@ -175,11 +175,11 @@ def test_with_additional_factor():
     )
     input_list = [
         TestCase(
-            spoof=partialPositiveSpoofLehmerFactorization(2, 2, [3]),
+            spoof=partialPositiveSpoofLehmerFactorization(2, 2, [3], is_even=False),
             additional_factors=3,
         )
     ]
-    output_list = [partialPositiveSpoofLehmerFactorization(2, 2, [3, 3])]
+    output_list = [partialPositiveSpoofLehmerFactorization(2, 2, [3, 3], is_even=False)]
     assert len(input_list) == len(output_list)
     for test_input, ostensible_output in zip(input_list, output_list):
         if isinstance(ostensible_output, type) and issubclass(
@@ -219,7 +219,7 @@ def test_yield_all_spoof_Lehmer_factorizations_given_r_k_parity():
         TestCase(r=2, k=2, base_spoof=None, is_even=False),
     ]
     output_list = [
-        [partialPositiveSpoofLehmerFactorization(2, 0, 2, [3, 3])],
+        [partialPositiveSpoofLehmerFactorization(2, 0, 2, [3, 3], is_even=False)],
     ]
     assert len(input_list) == len(output_list)
     for test_input, ostensible_output in zip(input_list, output_list):

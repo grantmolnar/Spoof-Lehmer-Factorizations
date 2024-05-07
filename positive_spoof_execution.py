@@ -9,9 +9,9 @@ import os
 # We wish to pick our investigations where we left them off
 
 is_even_str = input("Producing evens? ")
-if is_even_str.lower() in ["no", "false", "f", "n"]:
+if is_even_str.lower() in ["no", "false", "f", "n", "even", "evens", "e"]:
     is_even = False
-elif is_even_str.lower() in ["yes", "true", "t", "y"]:
+elif is_even_str.lower() in ["yes", "true", "t", "y", "odd", "odds", "o"]:
     is_even = True
 else:
     raise NameError

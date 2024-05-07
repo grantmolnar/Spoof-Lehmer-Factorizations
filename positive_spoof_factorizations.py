@@ -90,6 +90,7 @@ class partialPositiveSpoofLehmerFactorization:
         self,
         r: int,
         k: Optional[int] = None,
+        is_even: bool = False,
         factors: Optional[List[int]] = None,
     ) -> None:
         """
@@ -102,6 +103,7 @@ class partialPositiveSpoofLehmerFactorization:
         """
         self.k = k
         self.factors = sorted(factors) if factors is not None else []
+        self.is_even = is_even
         # The number of positive and negative terms our completed factorization will have
         self.r = r
         # The number of terms our factorization has so far
@@ -140,7 +142,7 @@ class partialPositiveSpoofLehmerFactorization:
         extended_factors.append(next_factor)
         # Create a new instance with the same rplus, rminus, and k values, and the extended_factors list
         return partialPositiveSpoofLehmerFactorization(
-            r=self.r, k=self.k, factors=extended_factors
+            r=self.r, k=self.k, is_even=self.is_even, factors=extended_factors
         )
 
         return new_instance
@@ -152,7 +154,7 @@ class partialPositiveSpoofLehmerFactorization:
         Returns:
             str: A string representation of the instance.
         """
-        return f"partialSpoofLehmerFactorization(r={self.r}, k={self.k}, factors={self.factors})"
+        return f"partialSpoofLehmerFactorization(r={self.r}, k={self.k}, is_even={self.is_even}, factors={self.factors})"
 
     def totient(self) -> int:
         return compute_totient(self.factors)
@@ -174,7 +176,10 @@ class partialPositiveSpoofLehmerFactorization:
             minimal_next_term = self.factors[-1]
         else:
             # If our list was empty before, the smallest it can be is 2
-            minimal_next_term = 2
+            if self.is_even:
+                minimal_next_term = 2
+            else:
+                minimal_next_term = 3
         # Our lower bound is attained by letting all remaining factors be infinity.
         lower_bound = Fraction(
             evaluate(self.factors) - (1 if new_term_count == 0 else 0),
@@ -220,7 +225,7 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
     assert r > 1, "Our methods only apply if we have at least two factors"
     # If our base spoof is none, we initialize an empty spoof
     if base_spoof == None:
-        base_spoof = partialPositiveSpoofLehmerFactorization(r, k, factors=None)
+        base_spoof = partialPositiveSpoofLehmerFactorization(r, k, is_even=is_even, factors=None)
     # If our base spoof is complete, we check if it works
     if base_spoof.r == base_spoof.s:
         if k * base_spoof.totient() == base_spoof.evaluation() - 1:
@@ -293,7 +298,7 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_parity(
     # We establish the bounds within which we need to work
     if base_spoof == None:
         lower_bound, upper_bound = partialPositiveSpoofLehmerFactorization(
-            r, None, factors=None
+            r, None, is_even=is_even, factors=None
         ).k_bounds()
     else:
         lower_bound, upper_bound = base_spoof.k_bounds()
