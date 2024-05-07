@@ -1,8 +1,8 @@
 from time import time
 from collections import deque
-from spoof_factorizations_positive import (
+from positive_spoof_factorizations import (
     partialPositiveSpoofLehmerFactorization,
-    yield_all_positive_spoof_Lehmer_factorizations_given_r,
+    yield_all_positive_spoof_Lehmer_factorizations_given_r_parity,
 )
 import os
 
@@ -21,7 +21,7 @@ if is_even:
 else:
     parity = "odd"
 
-print(f"We are producing {parity}")
+print(f"We are producing {parity} spoofs!")
 
 spoofs_file_path = f"filestore/positive_{parity}_spoofs.txt"
 # Check if the file exists
@@ -56,7 +56,7 @@ while True:
     print(r)
     startTime = time()
     #    for spoof in yield_all_spoof_Lehmer_factorizations_given_r(r):
-    for spoof in yield_all_positive_spoof_Lehmer_factorizations_given_r(
+    for spoof in yield_all_positive_spoof_Lehmer_factorizations_given_r_parity(
         r, None, is_even=is_even, verbose=True
     ):
         with open(spoofs_file_path, "a") as file:

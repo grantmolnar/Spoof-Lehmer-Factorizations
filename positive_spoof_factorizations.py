@@ -190,10 +190,11 @@ class partialPositiveSpoofLehmerFactorization:
         return lower_bound, upper_bound
 
 
-def yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
+def yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
     r: int,
     k: int,
     base_spoof: Optional[partialPositiveSpoofLehmerFactorization] = None,
+    is_even: bool = False,
     verbose: bool = True,
 ) -> Iterator[partialPositiveSpoofLehmerFactorization]:
     """
@@ -202,6 +203,7 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
     Parameters:
             r (int): The number of terms in our factorization
             k (int): We'd like to satisfy k * phi(F) = e(F) - 1
+            is_even (bool): False If True, we look at totally even spoofs. Otherwise, we look only at odd spoofs.
             factors (Optional[List[int]]): An optional list of factor integers. Defaults to None.
 
     Yields:
@@ -231,7 +233,10 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
         # if lower_bound <= k and upper_bound <= k:
         # We need to consider the case of augmenting with new positive factors, and of augmenting with new negative factors, separately
         if base_spoof.factors == []:
-            start_term = 2
+            if is_even:
+                start_term = 2
+            else:
+                start_term = 3
         else:
             start_term = base_spoof.factors[-1]
 
@@ -244,10 +249,10 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
         # Thus if shared_limit = k, we can break
 
         if shared_limit != k:
-            for next_factor in infinite_range(start_term, step=1):
+            for next_factor in infinite_range(start_term, step=2):
 
                 # We use the congruence condition from Theorem 2 of Lehmer's paper to discard as many cases as we can
-                if all(next_factor % p not in [1, p - 1] for p in base_spoof.factors):
+                if all(next_factor % p != 1 for p in base_spoof.factors):
                     augmented_spoof = base_spoof.with_additional_factor(next_factor)
                     (
                         augmented_lower_bound,
@@ -261,15 +266,16 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
                         # print("Inequalities unsatisfied!")
                         for (
                             spoof
-                        ) in yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
-                            r, k, base_spoof=augmented_spoof, verbose=verbose
+                        ) in yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
+                            r, k, base_spoof=augmented_spoof, is_even = is_even, verbose=verbose
                         ):
                             yield spoof
 
 
-def yield_all_positive_spoof_Lehmer_factorizations_given_r(
+def yield_all_positive_spoof_Lehmer_factorizations_given_r_parity(
     r: int,
     base_spoof: Optional[partialPositiveSpoofLehmerFactorization] = None,
+    is_even: bool = False,
     verbose: bool = True,
 ) -> Iterator[partialPositiveSpoofLehmerFactorization]:
     """
@@ -299,7 +305,7 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r(
         if verbose:
             print(f"k = {k}")
         # if not (k == 1): # and r == 2): # If k = 1 and r = 2, the solutions are all of the form n*(2 - n)
-        for spoof in yield_all_positive_spoof_Lehmer_factorizations_given_r_k(
-            r, k, base_spoof=base_spoof, verbose=verbose
+        for spoof in yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
+            r, k, base_spoof=base_spoof, is_even = is_even, verbose=verbose
         ):
             yield spoof

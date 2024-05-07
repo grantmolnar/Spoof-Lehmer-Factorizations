@@ -1,9 +1,9 @@
-from spoof_factorizations_positive import (
+from positive_spoof_factorizations import (
     partialPositiveSpoofLehmerFactorization,
     compute_product_of_list,
     evaluate,
     compute_totient,
-    yield_all_positive_spoof_Lehmer_factorizations_given_r_k,
+    yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity,
 )
 from fractions import Fraction
 from collections import namedtuple
@@ -197,12 +197,12 @@ def test_with_additional_factor():
             # assert abs(test_output - ostensible_output) < epsilon
 
 
-def test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k():
+def test_yield_all_spoof_Lehmer_factorizations_given_r_k_parity():
     """
-    Tests the yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k method.
+    Tests the yield_all_spoof_Lehmer_factorizations_given_r_k_parity method.
     """
 
-    function_to_test = yield_all_positive_spoof_Lehmer_factorizations_given_r_k
+    function_to_test = yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity
 
     # Create a namedtuple to better organize test case parameters
     TestCase = namedtuple(
@@ -211,11 +211,12 @@ def test_yield_all_spoof_Lehmer_factorizations_given_rplus_rminus_k():
             "r",
             "k",
             "base_spoof",
+            "is_even"
         ],
     )
 
     input_list = [
-        TestCase(r=2, k=2, base_spoof=None),
+        TestCase(r=2, k=2, base_spoof=None, is_even=False),
     ]
     output_list = [
         [partialPositiveSpoofLehmerFactorization(2, 0, 2, [3, 3])],
