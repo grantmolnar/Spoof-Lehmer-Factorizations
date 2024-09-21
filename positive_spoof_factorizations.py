@@ -267,14 +267,16 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
                     if augmented_upper_bound < k:
                         break
                     else:
-                        # We can be more refined in our handling of infinities
-                        # print("Inequalities unsatisfied!")
-                        for (
-                            spoof
-                        ) in yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
-                            r, k, base_spoof=augmented_spoof, is_even = is_even, verbose=verbose
-                        ):
-                            yield spoof
+                        # We only yield a spoof if L <= k 
+                        if augmented_lower_bound <= k:
+                            # We can be more refined in our handling of infinities
+                            # print("Inequalities unsatisfied!")
+                            for (
+                                spoof
+                            ) in yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
+                                r, k, base_spoof=augmented_spoof, is_even = is_even, verbose=verbose
+                            ):
+                                yield spoof
 
 
 def yield_all_positive_spoof_Lehmer_factorizations_given_r_parity(
