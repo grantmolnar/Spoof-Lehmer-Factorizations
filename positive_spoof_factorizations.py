@@ -264,7 +264,7 @@ def yield_all_positive_spoof_Lehmer_factorizations_given_r_k_parity(
                         augmented_upper_bound,
                     ) = augmented_spoof.k_bounds()
                     # This is bound to happen eventually
-                    if augmented_lower_bound > k or augmented_upper_bound < k:
+                    if augmented_upper_bound < k:
                         break
                     else:
                         # We can be more refined in our handling of infinities
