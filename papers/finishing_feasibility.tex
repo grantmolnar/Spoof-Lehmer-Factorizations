@@ -1,0 +1,219 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+
+\newcommand{\eps}{\tilde{\epsilon}}
+\newcommand{\phist}{\tilde{\varphi}^*}
+\newcommand{\Z}{\mathbb{Z}}
+
+\title{Finishing-Feasibility at the Last Two Levels\\
+for Spoof Lehmer Enumeration}
+\author{G.~Molnar and G.~Singh}
+\date{\today~(Draft)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We sharpen the bounds-propagation algorithm for enumerating spoof Lehmer
+factorizations by replacing the last two levels of recursive search with
+direct algebraic solves.  At length $s = r - 1$, the residual factor is
+given by a closed-form rational; at length $s = r - 2$, the residual pair
+is determined by divisor pairs of a single explicit integer.  The
+sharpening is specific to the defining equation and is especially
+beneficial at small $k$, where the bounds-propagation geometry is loose
+and the recursion is correspondingly deep.  We also note that the
+$s = r - 2$ identity specializes to the Hasanalizade extension equation
+when the prefix is a plus-seed, unifying the small-$k$ completeness
+enumeration with the descent framework of~\cite{MFT}.
+\end{abstract}
+
+\section{Introduction}
+
+In~\cite{MS26} we introduced spoof Lehmer factorizations---multisets
+$F = \{x_1, \ldots, x_r\}$ of positive integers satisfying
+$k \cdot \phist(F) = \eps(F) - 1$ for some $k \in \Z_{>0}$, where
+$\eps(F) = \prod x_i$ and $\phist(F) = \prod(x_i - 1)$---and
+enumerated all such factorizations with $r \le 6$.  Our enumeration
+proceeded by \emph{bounds propagation}: building up sorted partial
+factorizations $F_0 = (x_1, \ldots, x_s)$ with $s < r$, and pruning
+candidates for $x_{s+1}$ using the monotone ratio
+\begin{equation}\label{eq:ratio}
+  k(F) = \frac{\eps(F) - 1}{\phist(F)},
+\end{equation}
+which is decreasing in each argument.  Specifically, the lower and upper
+bounds
+\[
+  L(F_0) = \frac{\eps(F_0) - [s = r]}{\phist(F_0)},
+  \qquad
+  U(F_0) = \frac{\eps(F_0') - 1}{\phist(F_0')},
+\]
+where $F_0'$ fills the remaining $r - s$ slots with the smallest legal
+next factor, sandwich the achievable values of $k$ for any completion
+of~$F_0$.  The recursion terminates whenever $U < k$ or $L > k$.
+
+This algorithm successfully enumerates all $r \le 6$ spoof Lehmer
+factorizations.  For $r = 7$, the algorithm is in principle correct but
+empirically stalls at $k = 2$.  The reason is structural: at small~$k$,
+the shared limit $\lim_{a \to \infty} L(F_0, a) = \lim_{a \to \infty}
+U(F_0, a) = \eps(F_0)/\phist(F_0)$ approaches the target from the
+\emph{constraint} side of $k$, so the termination inequality $U < k$ only
+fires after many candidate factors have been explored.  At large~$k$,
+partial states are pruned aggressively; at $k = 2$, the surviving
+frontier balloons.
+
+In this note we sharpen the algorithm by replacing the last two levels
+of recursion with direct solves.
+
+\section{Finishing-feasibility at $s = r - 1$}
+
+Let $F_0 = (x_1, \ldots, x_{r-1})$ be a partial factorization with
+$\eps(F_0) = E$ and $\phist(F_0) = P$.  A single factor~$x_r$ completes
+$F_0$ to a $k$-Lehmer factorization iff
+$k P (x_r - 1) = E x_r - 1$.  Solving:
+\begin{equation}\label{eq:r-1-finish}
+  x_r \;=\; \frac{kP - 1}{kP - E}.
+\end{equation}
+
+\begin{proposition}[$s = r - 1$ finishing-feasibility]\label{prop:rm1}
+A partial factorization $F_0$ of length $r - 1$ extends to a $k$-Lehmer
+factorization if and only if $kP - E > 0$, $kP - E$ divides $kP - 1$,
+and the quotient $x_r = (kP - 1)/(kP - E)$ satisfies $x_r \ge x_{r-1}$.
+The extension, when it exists, is unique.
+\end{proposition}
+
+The entire check requires one integer division and one comparison.  No
+candidate iteration is needed.
+
+\section{Finishing-feasibility at $s = r - 2$}
+
+Let $F_0 = (x_1, \ldots, x_{r-2})$ with $\eps(F_0) = E$ and
+$\phist(F_0) = P$.  We seek a pair $(a, b)$ with $a \le b$ and
+$a \ge x_{r-2}$ completing $F_0$ to a $k$-Lehmer factorization.  The
+defining equation expands to
+\[
+  kP(a - 1)(b - 1) \;=\; Eab - 1,
+\]
+which rearranges to
+\[
+  (kP - E)\,ab \;-\; kP(a + b) \;+\; (kP + 1) \;=\; 0.
+\]
+Write $A = kP - E$ and $B = kP$.  Multiplying by $A$ and completing the
+product on $a$ and $b$ yields
+\begin{equation}\label{eq:finish}
+  (A a - B)(A b - B) \;=\; B E - A.
+\end{equation}
+
+\begin{proposition}[$s = r - 2$ finishing-feasibility]\label{prop:rm2}
+Let $F_0$ be a partial factorization of length $r - 2$, with $A = kP - E$
+and $B = kP$.  A pair $(a, b)$ with $a \le b$ and $a \ge x_{r-2}$ extends
+$F_0$ to a $k$-Lehmer factorization if and only if $A > 0$ and there is
+a divisor pair $(d_1, d_2)$ of $BE - A$ with $d_1 \le d_2$ such that
+\[
+  a = \frac{d_1 + B}{A},
+  \qquad
+  b = \frac{d_2 + B}{A},
+\]
+are integers satisfying $x_{r-2} \le a \le b$.
+\end{proposition}
+
+The check requires one factorization of the integer $BE - A$, followed
+by one trial of each divisor pair.  The cost is dominated by the
+factorization step.
+
+\begin{remark}[Relationship to the descent formula]
+When $F_0$ is a \emph{plus-seed}---i.e., $k P = E + 1$, so $A = 1$ and
+$B = E + 1$---Equation~\eqref{eq:finish} becomes
+$(a - E - 1)(b - E - 1) = (E + 1) E - 1 = E^2 + E - 1$, which is exactly
+Hasanalizade's extension equation~\cite{H26} specialized to the Lehmer
+side.  More generally, the $s = r - 2$ finishing-feasibility identity
+subsumes the Hasanalizade descent equation: the descent formula handles
+the case $A = 1$; Proposition~\ref{prop:rm2} handles arbitrary $A \ge 1$.
+\end{remark}
+
+\section{Algorithm}
+
+The sharpened bounds-propagation algorithm replaces the last two levels
+of recursion with direct solves.
+
+\begin{algorithm}[H]
+\caption{Sharpened bounds propagation for $k$-Lehmer enumeration}
+\label{alg:sharp}
+\begin{algorithmic}[1]
+\Procedure{Enumerate}{$F_0$, $k$, $r$}
+\State $s \gets |F_0|$
+\If{$s = r - 1$}
+    \State solve~\eqref{eq:r-1-finish}; emit if integer and valid
+\ElsIf{$s = r - 2$}
+    \State factor $BE - A$; emit every divisor pair giving valid $(a, b)$
+\Else
+    \State apply bounds propagation as in~\cite{MS26}
+    \For{each candidate $x_{s+1}$ not pruned by $L, U$ or Lehmer's congruence}
+        \State \Call{Enumerate}{$F_0 \cup \{x_{s+1}\}$, $k$, $r$}
+    \EndFor
+\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+The last two levels change from "explore a potentially large frontier of
+candidate factors" to "solve one equation and verify."  Both finishing
+checks are dominated by the $s = r - 2$ factorization; everything above
+$s = r - 2$ is unchanged from the original algorithm.
+
+\begin{remark}[Expected impact at $k = 2$]
+At $k = 2$, the bounds-propagation recursion's next-factor loop runs
+longest precisely at the deepest levels $s = r - 1$ and $s = r - 2$,
+because the gap $\min(k - L, U - k)$ is tightest there but the bound
+$U$ decays slowest as $a$ grows.  Replacing these levels with direct
+solves eliminates the loop at exactly the depths where the original
+algorithm spent the most time.
+\end{remark}
+
+\section{Implementation notes}
+
+Algorithm~\ref{alg:sharp} is straightforward to implement on top of the
+existing bounds-propagation enumerator.  The only external dependency is
+an integer factorization routine for $BE - A$; for the $r = 7$ case of
+interest, this integer has at most around~70 digits and is within reach
+of standard methods (sympy's Pollard rho plus ECM, or yafu for larger
+inputs).  The divisor enumeration runs in time
+$O(\tau(BE - A) \log(BE - A))$, which is negligible compared to the
+factoring step.
+
+Lehmer's congruence pruning (no factor of a $k$-Lehmer factorization is
+$\equiv 1 \pmod{p}$ for any other factor~$p$) continues to apply at
+levels $s < r - 2$ and remains useful there.  At $s = r - 1$ and
+$s = r - 2$, the congruence is subsumed by the direct-solve conditions:
+factors violating the congruence necessarily fail the divisibility or
+integrality checks.
+
+\begin{thebibliography}{9}
+
+\bibitem{H26}
+E.~Hasanalizade, \emph{Some remarks on a paper of Molnar and Singh},
+Integers \textbf{26} (2026).
+
+\bibitem{MFT}
+G.~Molnar, \emph{The extension graph of spoof Lehmer factorizations is a
+forest}, in preparation (2026).
+
+\bibitem{MS26}
+G.~Molnar and G.~Singh, \emph{Spoof Lehmer factorizations}, Integers
+\textbf{26} (2026), \#A33.
+
+\end{thebibliography}
+
+\end{document}

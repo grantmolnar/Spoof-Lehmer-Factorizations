@@ -1,0 +1,43 @@
+[project]
+name = "spoof-lehmer"
+version = "0.1.0"
+description = "Computational investigation of the Hasanalizade extension graph for spoof Lehmer factorizations."
+authors = [
+    {name = "G. Molnar"},
+]
+readme = "README.md"
+requires-python = ">=3.11,<4.0"
+dependencies = [
+    "sympy (>=1.12,<2.0)",
+]
+
+[project.scripts]
+spoof-census = "spoof_lehmer.cli.census:main"
+spoof-extend = "spoof_lehmer.cli.extend:main"
+spoof-analyze = "spoof_lehmer.cli.analyze:main"
+spoof-enumerate = "spoof_lehmer.cli.enumerate:main"
+
+[tool.poetry]
+packages = [{include = "spoof_lehmer", from = "src"}]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0"
+hypothesis = "^6.100"
+mypy = "^1.10"
+ruff = "^0.5"
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers"
+
+[build-system]
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
