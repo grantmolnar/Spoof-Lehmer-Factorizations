@@ -16,8 +16,12 @@ So the relevant k-range is finite:
 from __future__ import annotations
 import argparse
 import json
+import sys
 from pathlib import Path
-from spoof_lehmer.search import BoundsPropagationStrategy
+from spoof_lehmer.search import (
+    BoundsPropagationStrategy,
+    StderrProgressReporter,
+)
 from spoof_lehmer.storage import SQLiteRepository
 
 
@@ -80,6 +84,34 @@ def main() -> None:
         action="store_true",
         help="Disable the closed-form endgame (debug/cross-check only).",
     )
+    parser.add_argument(
+        "--progress",
+        dest="progress",
+        action="store_true",
+        default=None,
+        help=(
+            "Emit human-readable progress to stderr: per-k timing, "
+            "per-length timing, each factorization as it's found, "
+            "and a throttled heartbeat during long searches. "
+            "Default: on when stderr is a TTY, off otherwise."
+        ),
+    )
+    parser.add_argument(
+        "--no-progress",
+        dest="progress",
+        action="store_false",
+        help="Suppress the stderr progress stream.",
+    )
+    parser.add_argument(
+        "--heartbeat-seconds",
+        type=float,
+        default=30.0,
+        help=(
+            "Minimum wall-clock seconds between heartbeat lines during "
+            "a single (k, r) search. Set to 0 to disable heartbeats "
+            "while keeping per-length and per-found output. Default 30."
+        ),
+    )
     args = parser.parse_args()
 
     is_even = args.parity == "even"
@@ -88,9 +120,25 @@ def main() -> None:
     )
     db_path.parent.mkdir(parents=True, exist_ok=True)
 
+    # Progress-reporter selection:
+    #   --progress on:  StderrProgressReporter with given heartbeat.
+    #   --no-progress:  None (strategy will use SilentProgressReporter).
+    #   default (None): auto-detect TTY on stderr.
+    if args.progress is None:
+        enable_progress = sys.stderr.isatty()
+    else:
+        enable_progress = args.progress
+    progress = (
+        StderrProgressReporter(heartbeat_seconds=args.heartbeat_seconds)
+        if enable_progress
+        else None
+    )
+
     k_max = k_upper_bound(args.max_r, is_even)
     print(f"Parity: {args.parity}  |  max r: {args.max_r}  |  k range: [2, {k_max}]")
     print(f"Database: {db_path}")
+    if enable_progress:
+        print(f"Progress: on (heartbeat every {args.heartbeat_seconds:g}s on stderr)")
     print()
 
     repo = SQLiteRepository(db_path)
@@ -104,6 +152,7 @@ def main() -> None:
             max_r=args.max_r,
             is_even=is_even,
             use_finishing_feasibility=not args.no_finishing_feasibility,
+            progress=progress,
         )
         result = strat.discover(repo)
         by_k[k] = result.added

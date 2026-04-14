@@ -47,6 +47,10 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import datetime, timezone
 from math import isqrt
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from spoof_lehmer.search.progress import ProgressReporter
 
 from sympy import divisors, isprime  # type: ignore[import-untyped]
 from sympy.ntheory.generate import primerange  # type: ignore[import-untyped]
@@ -155,6 +159,7 @@ class BoundsPropagationStrategy:
         use_finish_three: bool = False,
         use_residue_filter: bool = True,
         on_found: "Callable[[Factorization], None] | None" = None,
+        progress: "ProgressReporter | None" = None,
     ):
         """
         Args:
@@ -180,7 +185,13 @@ class BoundsPropagationStrategy:
                 factorization (i.e. ones that survive repo.add()'s
                 dedup check). Lets callers stream progress without
                 wrapping the repository.
+            progress: optional progress reporter receiving structured
+                events (k start/end, length start/end, heartbeat).
+                Default is a silent reporter; pass a
+                :class:`StderrProgressReporter` for human-readable
+                output to stderr.  See :mod:`spoof_lehmer.search.progress`.
         """
+        from spoof_lehmer.search.progress import SilentProgressReporter
         self.k_target = k_target
         self.max_r = max_r
         self.min_r = min_r
@@ -189,18 +200,30 @@ class BoundsPropagationStrategy:
         self.use_finish_three = use_finish_three
         self.use_residue_filter = use_residue_filter
         self.on_found = on_found
+        self.progress = progress if progress is not None else SilentProgressReporter()
 
     def discover(self, repo: FactorizationRepository) -> RunResult:
+        import time
         record = RunRecord.started_now(
             self.name, self.k_target, self.max_r, max_N=None,
         )
+        t_k_start = time.perf_counter()
+        self.progress.on_k_start(self.k_target, self.max_r)
         added = 0
         nodes = 0
         for r in range(self.min_r, self.max_r + 1):
+            t_r_start = time.perf_counter()
+            self.progress.on_length_start(self.k_target, r)
             sub_added, sub_nodes = self._search_at_length(repo, r)
+            self.progress.on_length_end(
+                self.k_target, r, sub_added, sub_nodes,
+                time.perf_counter() - t_r_start,
+            )
             added += sub_added
             nodes += sub_nodes
 
+        elapsed = time.perf_counter() - t_k_start
+        self.progress.on_k_end(self.k_target, self.max_r, added, nodes, elapsed)
         result = RunResult(
             added=added, status=RunStatus.COMPLETE, nodes_explored=nodes,
             notes=f"k_target={self.k_target}, no max_N (bounds-driven termination)",
@@ -220,14 +243,27 @@ class BoundsPropagationStrategy:
         Does NOT write a RunRecord (the coordinator owns run tracking
         for the partitioned search).
         """
+        import time
+        t_k_start = time.perf_counter()
+        self.progress.on_k_start(self.k_target, self.max_r)
         added = 0
         nodes = 0
         for r in range(self.min_r, self.max_r + 1):
             if len(prefix) > r:
                 continue
+            t_r_start = time.perf_counter()
+            self.progress.on_length_start(self.k_target, r)
             sub_added, sub_nodes = self._search_at_length(repo, r, prefix)
+            self.progress.on_length_end(
+                self.k_target, r, sub_added, sub_nodes,
+                time.perf_counter() - t_r_start,
+            )
             added += sub_added
             nodes += sub_nodes
+        self.progress.on_k_end(
+            self.k_target, self.max_r, added, nodes,
+            time.perf_counter() - t_k_start,
+        )
         return RunResult(
             added=added, status=RunStatus.COMPLETE, nodes_explored=nodes,
             notes=f"k_target={self.k_target}, prefix={prefix}",
@@ -251,6 +287,22 @@ class BoundsPropagationStrategy:
         """
         added = 0
         nodes = [0]
+        # Heartbeat bookkeeping: call progress.on_heartbeat every
+        # HEARTBEAT_NODE_INTERVAL node visits. The reporter itself
+        # throttles by wall time; we throttle by node count to keep
+        # the hot path cheap.
+        import time as _time
+        t_search_start = _time.perf_counter()
+        HEARTBEAT_NODE_INTERVAL = 100_000
+        progress = self.progress
+        k_target = self.k_target
+
+        def _maybe_heartbeat() -> None:
+            if nodes[0] % HEARTBEAT_NODE_INTERVAL != 0:
+                return
+            progress.on_heartbeat(
+                k_target, r, nodes[0], _time.perf_counter() - t_search_start,
+            )
 
         # Mutable state shared across the recursion.
         factors: list[int] = list(prefix)
@@ -273,6 +325,10 @@ class BoundsPropagationStrategy:
                 added += 1
                 if self.on_found is not None:
                     self.on_found(fact)
+                progress.on_found(
+                    k_target, r, fact.factors,
+                    _time.perf_counter() - t_search_start,
+                )
 
         def congruence_ok_against_prefix(v: int) -> bool:
             for x in factors:
@@ -480,6 +536,7 @@ class BoundsPropagationStrategy:
         def search(eps: int, phi: int, min_a: int, remaining: int) -> None:
             nonlocal added
             nodes[0] += 1
+            _maybe_heartbeat()
 
             if remaining == 0:
                 # Terminal. Check k * phi == eps - 1.
@@ -487,6 +544,12 @@ class BoundsPropagationStrategy:
                     fact = Factorization(tuple(factors), self.k_target)
                     if repo.add(fact, Provenance(self.name, None, _now())):
                         added += 1
+                        if self.on_found is not None:
+                            self.on_found(fact)
+                        progress.on_found(
+                            k_target, r, fact.factors,
+                            _time.perf_counter() - t_search_start,
+                        )
                 return
 
             if use_ff and remaining == 1:
@@ -530,6 +593,7 @@ class BoundsPropagationStrategy:
             a = min_a
             while True:
                 nodes[0] += 1
+                _maybe_heartbeat()
                 # Upper-bound check first: as a grows, U decreases
                 # monotonically. Once U < k, every larger a also fails.
                 # U(prefix + a + (remaining-1) copies of a) >= k iff

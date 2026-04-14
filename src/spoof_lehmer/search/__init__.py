@@ -13,6 +13,11 @@ from spoof_lehmer.tracking import (
 from spoof_lehmer.search.bounds_propagation import (
     BoundsPropagationStrategy as BoundsPropagationStrategy,
 )
+from spoof_lehmer.search.progress import (
+    ProgressReporter as ProgressReporter,
+    SilentProgressReporter as SilentProgressReporter,
+    StderrProgressReporter as StderrProgressReporter,
+)
 
 
 def _now() -> str:
