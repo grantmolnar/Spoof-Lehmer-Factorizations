@@ -1,0 +1,698 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{lemma}[theorem]{Lemma}
+\theoremstyle{definition}
+\newtheorem{definition}[theorem]{Definition}
+\theoremstyle{remark}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{openproblem}[theorem]{Open problem}
+
+\newcommand{\eps}{\tilde{\epsilon}}
+\newcommand{\phist}{\tilde{\varphi}^*}
+\newcommand{\Z}{\mathbb{Z}}
+
+\title{Closed-Form Finishing for Spoof Lehmer Enumeration,\\
+with a Complete Census at $r \le 7$}
+\author{G.~Molnar}
+\date{\today~(Draft)}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+We sharpen the bounds-propagation algorithm of~\cite{MS26} for
+enumerating spoof Lehmer factorizations by replacing the deepest
+levels of recursive search with direct algebraic solves. At length
+$s = r - 1$ the residual factor is given by a closed-form rational;
+at $s = r - 2$ the residual pair is determined by divisor pairs of a
+single explicit integer, generalizing Hasanalizade's two-factor
+extension equation~\cite{H26}; at $s = r - 3$ the residual triple
+is determined by a one-parameter family of divisor-pair problems
+indexed by a small integer. The sharpening closes the complete $r \le 7$
+census and brings $r = 8$ within reach. We exhibit the full $r \le 7$
+census, organized by the forest structure of~\cite{MFT}, and
+discuss what remains open at $r = 8$ and beyond.
+\end{abstract}
+
+
+%=====================================================================
+\section{Introduction}
+%=====================================================================
+
+In~\cite{MS26} the author and G.~Singh introduced spoof Lehmer
+factorizations---multisets $F = \{x_1, \ldots, x_r\}$ of positive
+integers satisfying
+\begin{equation}\label{eq:lehmer}
+  k \cdot \phist(F) = \eps(F) - 1
+  \qquad\text{for some } k \in \Z_{>0},
+\end{equation}
+where $\eps(F) = \prod x_i$ and $\phist(F) = \prod(x_i - 1)$---and
+enumerated all such factorizations with $r \le 6$. The enumeration
+proceeded by \emph{bounds propagation}: building up sorted partial
+factorizations $F_0 = (x_1, \ldots, x_s)$ with $s < r$, and pruning
+candidates for $x_{s+1}$ using the monotone ratio
+\begin{equation}\label{eq:ratio}
+  k(F) = \frac{\eps(F) - 1}{\phist(F)},
+\end{equation}
+which is decreasing in each argument. The lower and upper bounds
+\[
+  L(F_0) = \frac{\eps(F_0) - [s = r]}{\phist(F_0)},
+  \qquad
+  U(F_0) = \frac{\eps(F_0') - 1}{\phist(F_0')},
+\]
+where $F_0'$ fills the remaining $r - s$ slots with the smallest legal
+next factor, sandwich the achievable values of $k$ for any completion
+of~$F_0$. The recursion terminates whenever $U < k$ or $L > k$.
+
+This algorithm successfully enumerates all $r \le 6$ spoof Lehmer
+factorizations in seconds.  For $r \ge 7$, the algorithm is in
+principle correct but empirically stalls at $k = 2$.  The reason is
+structural: at small~$k$, the shared limit $\lim_{a \to \infty}
+L(F_0, a) = \lim_{a \to \infty} U(F_0, a) = \eps(F_0)/\phist(F_0)$
+approaches the target from the \emph{constraint} side of $k$, so the
+termination inequality $U < k$ only fires after many candidate factors
+have been explored.  At large~$k$, partial states are pruned
+aggressively; at $k = 2$, the surviving frontier balloons.
+
+In this paper we sharpen the algorithm by replacing the last three
+levels of recursion with direct algebraic solves. The effect is
+dramatic: the complete $r \le 7$ census at every valid $k$ and in odd
+parity is produced in under five minutes on commodity hardware, where
+the unsharpened algorithm had not completed $r = 7$ at $k = 2$ after
+many hours.
+
+The sharpening proceeds in three levels:
+
+\begin{enumerate}[label=(\roman*)]
+  \item \textbf{$s = r - 1$} (Proposition~\ref{prop:rm1}): the
+    remaining factor is given by a closed rational, so the level
+    reduces to one division and one comparison.
+  \item \textbf{$s = r - 2$} (Proposition~\ref{prop:rm2}): the
+    remaining pair is given by divisor pairs of a single explicit
+    integer $M$. This specializes, when the prefix is a
+    Hasanalizade plus-seed, to his two-factor extension
+    equation~\cite{H26}.
+  \item \textbf{$s = r - 3$} (Proposition~\ref{prop:rm3}): the
+    remaining triple is given by a one-parameter family of
+    two-factor problems of the same shape as (ii), indexed by a
+    small integer $u$.
+\end{enumerate}
+
+Higher levels do not admit an analogous closed form; we discuss why
+in Section~\ref{sec:open} and pose the question of whether a sharper
+reduction exists for small $k$.
+
+The empirical payoff, beyond completing $r = 7$, is a complete
+tabulation of the $r \le 7$ census organized by the forest structure
+of~\cite{MFT}: every $k$-Lehmer factorization with $r \le 7$ is
+classified as primitive (admitting no descended pair) or as the
+image of a unique plus-seed. The census confirms the forest theorem
+experimentally for every $k$ and exhibits the families---Fermat and
+sporadic---through $r = 7$.
+
+
+%=====================================================================
+\section{Finishing-feasibility at $s = r - 1$}
+%=====================================================================
+
+Let $F_0 = (x_1, \ldots, x_{r-1})$ be a partial factorization with
+$\eps(F_0) = E$ and $\phist(F_0) = P$.  A single factor~$x_r$ completes
+$F_0$ to a $k$-Lehmer factorization iff
+$k P (x_r - 1) = E x_r - 1$.  Solving:
+\begin{equation}\label{eq:r-1-finish}
+  x_r \;=\; \frac{kP - 1}{kP - E}.
+\end{equation}
+
+\begin{proposition}[$s = r - 1$ finishing-feasibility]\label{prop:rm1}
+A partial factorization $F_0$ of length $r - 1$ extends to a $k$-Lehmer
+factorization if and only if $kP - E > 0$, $kP - E$ divides $kP - 1$,
+and the quotient $x_r = (kP - 1)/(kP - E)$ satisfies $x_r \ge x_{r-1}$
+and the appropriate parity condition.  The extension, when it exists,
+is unique.
+\end{proposition}
+
+\begin{proof}
+Let $x_r$ extend $F_0$ to a $k$-Lehmer factorization.  Then
+$kP(x_r - 1) = E x_r - 1$, rearranging to $(kP - E) x_r = kP - 1$.
+If $kP - E \le 0$, the left side is non-positive for $x_r \ge 1$ and
+the right side is positive, a contradiction.  Otherwise $x_r = (kP -
+1)/(kP - E)$ is forced, and integrality requires $kP - E$ to divide
+$kP - 1$.  The monotonicity $x_r \ge x_{r-1}$ is required for $F_0
+\cdot x_r$ to be a sorted factorization.  Parity is a separate
+constraint from the defining equation; we record it for
+completeness.  Conversely, given these conditions, direct substitution
+confirms $F_0 \cdot x_r$ is $k$-Lehmer.
+\end{proof}
+
+The entire check requires one integer division and one comparison.  No
+candidate iteration is needed.
+
+
+%=====================================================================
+\section{Finishing-feasibility at $s = r - 2$}
+%=====================================================================
+
+Let $F_0 = (x_1, \ldots, x_{r-2})$ with $\eps(F_0) = E$ and
+$\phist(F_0) = P$.  We seek a pair $(a, b)$ with $a \le b$ and
+$a \ge x_{r-2}$ completing $F_0$ to a $k$-Lehmer factorization.  The
+defining equation expands to
+\[
+  kP(a - 1)(b - 1) \;=\; Eab - 1,
+\]
+which rearranges to
+\[
+  (kP - E)\,ab \;-\; kP(a + b) \;+\; (kP + 1) \;=\; 0.
+\]
+Write $A = kP - E$ and $B = kP$.  Multiplying by $A$ and completing the
+product on $a$ and $b$ yields
+\begin{equation}\label{eq:finish}
+  (A a - B)(A b - B) \;=\; B E - A.
+\end{equation}
+
+\begin{proposition}[$s = r - 2$ finishing-feasibility]\label{prop:rm2}
+Let $F_0$ be a partial factorization of length $r - 2$, with $A = kP - E$
+and $B = kP$.  A pair $(a, b)$ with $a \le b$ and $a \ge x_{r-2}$ extends
+$F_0$ to a $k$-Lehmer factorization if and only if $A > 0$ and there is
+a divisor pair $(d_1, d_2)$ of $BE - A$ with $d_1 \le d_2$ such that
+\[
+  a = \frac{d_1 + B}{A},
+  \qquad
+  b = \frac{d_2 + B}{A},
+\]
+are integers satisfying $x_{r-2} \le a \le b$ and the appropriate
+parity and Lehmer-congruence conditions.
+\end{proposition}
+
+The check requires one factorization of the integer $BE - A$, followed
+by one trial of each divisor pair.
+
+\begin{remark}[Relationship to the descent formula]
+When $F_0$ is a \emph{plus-seed}---i.e., $k P = E + 1$, so $A = 1$ and
+$B = E + 1$---Equation~\eqref{eq:finish} becomes
+$(a - E - 1)(b - E - 1) = (E + 1) E - 1 = E^2 + E - 1$, which is exactly
+Hasanalizade's extension equation~\cite{H26} specialized to the Lehmer
+side.  More generally, the $s = r - 2$ finishing-feasibility identity
+subsumes the Hasanalizade descent equation: the descent formula handles
+the case $A = 1$; Proposition~\ref{prop:rm2} handles arbitrary $A \ge 1$.
+\end{remark}
+
+
+%=====================================================================
+\section{Finishing-feasibility at $s = r - 3$}
+%=====================================================================
+
+Let $F_0 = (x_1, \ldots, x_{r-3})$ with the usual notation. We seek a
+triple $(a, b, c)$ with $x_{r-3} \le a \le b \le c$ completing $F_0$
+to a $k$-Lehmer factorization. The defining equation
+\[
+  kP(a-1)(b-1)(c-1) = Eabc - 1
+\]
+expands, with $A = kP - E$ and $B = kP$ (so $B = A + E$), to
+\begin{equation}\label{eq:3var}
+  A \cdot abc - B(ab+ac+bc) + B(a+b+c) - (B - 1) = 0.
+\end{equation}
+Substituting $u = Aa - B$, $v = Ab - B$, $w = Ac - B$ and multiplying
+by $A^3$, the equation simplifies to
+\begin{equation}\label{eq:3var-uvw}
+  uvw \;-\; EB(u + v + w) \;=\; C_{F_0},
+  \qquad
+  C_{F_0} := A^2(E - 1) + E^2(3A + 2E).
+\end{equation}
+
+Unlike \eqref{eq:finish}, Equation~\eqref{eq:3var-uvw} does not admit
+a single-integer factorization reduction.  However, for each fixed
+$u \ge 1$, the remaining two-variable equation
+\[
+  uvw - EB(v + w) = C_{F_0} + EB \cdot u
+\]
+multiplies through by $u$ and completes on $v, w$ to
+\begin{equation}\label{eq:3var-fixed-u}
+  (u v - EB)(u w - EB) \;=\; u \cdot C_{F_0} + u^2 EB + (EB)^2 =: M_u.
+\end{equation}
+
+\begin{proposition}[$s = r - 3$ finishing-feasibility]\label{prop:rm3}
+A triple $(a, b, c)$ with $x_{r-3} \le a \le b \le c$ extends $F_0$
+to a $k$-Lehmer factorization if and only if $A > 0$ and there exist
+a positive integer $u$ and a divisor pair $(D_1, D_2)$ of $M_u$ such
+that:
+\begin{itemize}
+  \item $A \mid u + B$ and $a := (u + B)/A \ge x_{r-3}$,
+  \item $u \mid D_1 + EB$ and $u \mid D_2 + EB$, so $v := (D_1 +
+    EB)/u$ and $w := (D_2 + EB)/u$ are positive integers,
+  \item $A \mid v + B$ and $A \mid w + B$, so $b := (v + B)/A$ and
+    $c := (w + B)/A$ are positive integers with $a \le b \le c$,
+  \item the appropriate parity and Lehmer-congruence conditions hold.
+\end{itemize}
+\end{proposition}
+
+Unlike the $s = r - 1$ and $s = r - 2$ cases, the $s = r - 3$ reduction
+retains an outer loop over $u$.  In practice the loop is short: the
+lower bound $a \ge x_{r-3}$ and the bounds-propagation termination
+$U_3(a) = (E a^3 - 1)/(P (a-1)^3) \ge k$ together restrict $a$
+(equivalently $u = Aa - B$) to a bounded range.
+
+\begin{remark}[Why the pattern stops at $s = r - 3$]\label{rem:stops}
+The substitution $u_i = Ax_i - B$ reduces the defining equation at
+$s = r - j$ to a $j$-variable homogeneous-degree-$j$ problem in the
+$u_i$. At $j = 2$ this is a single hyperbola and the divisor-pair
+solution is exact. At $j = 3$ the surface is cubic; fixing one
+variable yields a hyperbola (our Proposition~\ref{prop:rm3}), but no
+two-variable reduction exists for the full cubic. For $j \ge 4$, even
+the one-variable-fixed reduction is not planar, so the pattern halts.
+\end{remark}
+
+
+%=====================================================================
+\section{Algorithm}
+%=====================================================================
+
+The sharpened bounds-propagation algorithm replaces the last three
+levels of recursion with direct solves:
+
+\begin{algorithm}[H]
+\caption{Sharpened bounds propagation for $k$-Lehmer enumeration}
+\label{alg:sharp}
+\begin{algorithmic}[1]
+\Procedure{Enumerate}{$F_0$, $k$, $r$}
+\State $s \gets |F_0|$
+\If{$s = r - 1$}
+    \State solve~\eqref{eq:r-1-finish}; emit if integer and valid
+\ElsIf{$s = r - 2$}
+    \State factor $BE - A$; emit every divisor pair giving valid $(a, b)$
+\ElsIf{$s = r - 3$}
+    \For{each valid $a \ge x_{r-3}$ with $U_3(a) \ge k$}
+        \State factor $M_u$; emit every divisor pair giving valid $(b, c)$
+    \EndFor
+\Else
+    \State apply bounds propagation as in~\cite{MS26}
+    \For{each candidate $x_{s+1}$ not pruned by $L, U$ or Lehmer's
+        congruence}
+        \State \Call{Enumerate}{$F_0 \cup \{x_{s+1}\}$, $k$, $r$}
+    \EndFor
+\EndIf
+\EndProcedure
+\end{algorithmic}
+\end{algorithm}
+
+\begin{remark}[Cost structure]
+The dominant cost of the sharpened algorithm is the integer
+factorizations at $s = r - 2$ and $s = r - 3$. For $r = 7$ at $k = 2$
+odd, the integers to be factored have at most~20 digits, and modern
+general-purpose factoring routines (Pollard-rho plus ECM as
+implemented in SymPy~\cite{sympy}) factor each in well under a
+millisecond.  A naive implementation using trial division up to
+$\sqrt{M}$ is catastrophic here: $M$ reaches $\sim 10^{19}$, so the
+trial-division loop runs for several minutes per prefix, where the
+factoring-based implementation finishes in microseconds.
+\end{remark}
+
+
+%=====================================================================
+\section{The complete $r \le 7$ census}\label{sec:census}
+%=====================================================================
+
+We implemented Algorithm~\ref{alg:sharp} and ran it for every $(r, k)$
+pair with $r \le 7$, $k \ge 2$, and factors odd and $\ge 3$. The
+relevant $k$ range is finite: any $k$-Lehmer factorization with
+minimum factor $a_{\min}$ and length $r$ satisfies $k < (a_{\min} /
+(a_{\min} - 1))^r$, so for odd factors $k \le \lfloor (3/2)^r \rfloor$.
+At $r = 7$ this gives $k \in \{2, 3, \ldots, 17\}$.
+
+\begin{theorem}[$r \le 7$ census]\label{thm:census}
+The complete set of $k$-Lehmer factorizations with $r \le 7$ and all
+factors odd and $\ge 3$, across all valid $k \ge 2$, consists of
+exactly~$107$ factorizations, distributed as in
+Table~\ref{tab:census}. Only the values $k \in \{2, 4, 5, 8\}$ produce
+any such factorizations in this range.
+\end{theorem}
+
+\begin{table}[ht]
+\centering
+\caption{Distribution of odd $k$-Lehmer factorizations by length~$r$
+and parameter~$k$, for $2 \le r \le 7$. Columns for $k \notin
+\{2,4,5,8\}$ are omitted (all zeros in this range).}\label{tab:census}
+\smallskip
+\begin{tabular}{@{}rrrrrr@{}}
+\toprule
+$r$ & $k=2$ & $k=4$ & $k=5$ & $k=8$ & total \\
+\midrule
+2 & 1   & --- & --- & --- & 1 \\
+3 & 1   & --- & --- & --- & 1 \\
+4 & 1   & --- & 1   & --- & 2 \\
+5 & 4   & --- & --- & --- & 4 \\
+6 & 22  & 1   & --- & --- & 23 \\
+7 & 74  & 1   & --- & 1   & 76 \\
+\midrule
+total & 103 & 2 & 1 & 1 & \textbf{107} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Family structure at $r = 7$}\label{subsec:families}
+
+The $74$ factorizations at $r = 7$, $k = 2$ group by length-5 prefix
+into families. Of these, exactly four prefixes produce more than one
+completion, and \emph{all four are plus-seeds}:
+\begin{itemize}
+  \item The \emph{Fermat-5 plus-seed} $(3, 5, 17, 257, 65537) = (F_0,
+    F_1, F_2, F_3, F_4)$ produces $16$ completions $(x_6, x_7)$ with
+    $x_6$ ranging over $\{2^{32}+1, \ldots, 4{,}357{,}221{,}587\}$.
+    These are exactly the divisor-pair solutions of
+    Proposition~\ref{prop:rm2} applied to this seed: $A = 1$ and
+    $BE - A = 2^{64} - 2^{32} - 1$ admits exactly $16$ divisor pairs
+    that satisfy the integrality, parity, and Lehmer-congruence
+    conditions.
+  \item The sporadic plus-seed $(5, 5, 5, 47, 453)$ produces $8$
+    completions, with $x_6$ ranging over
+    $\{2{,}661{,}377, \ldots, 4{,}363{,}935\}$.
+  \item The sporadic plus-seeds $(3, 5, 17, 353, 929)$ and
+    $(5, 7, 7, 7, 133)$ each produce $4$ completions.
+\end{itemize}
+This empirically corroborates the descent picture
+of~\cite{MFT}: completion multiplicity at length $r - 2$ is
+controlled by the divisor-pair count of $BE - A$, and
+multiplicity~$\ge 2$ requires $A = 1$ (the plus-seed condition) so
+that the divisor pairs of $BE - A$ are not crippled by
+divisibility-mod-$A$ constraints.
+
+One additional length-5 prefix, $(3, 5, 17, 257, 65543)$, produces
+$2$ completions despite not being a plus-seed itself. Its parent is
+the Fermat-4 plus-seed $(3, 5, 17, 257)$, whose extensions to
+length~$5$ form the family $\{65537, 65543, 65555, 65583, 65729,
+\ldots\}$; these length-5 extensions generally have $A > 1$ but
+inherit some structure that occasionally produces multiple
+length-7 completions.
+
+The remaining $40$ length-5 prefixes each produce exactly one
+length-7 completion.
+
+At $r = 7$ with $k \ne 2$, there are exactly two factorizations:
+\[
+  (3, 3, 3, 9, 23, 131, 732159) \text{ at } k = 4,
+  \qquad
+  (3, 3, 3, 3, 5, 5, 89) \text{ at } k = 8.
+\]
+
+
+%=====================================================================
+\section{Open problems}\label{sec:open}
+%=====================================================================
+
+%=====================================================================
+\section{Fermat-prefix closedness}\label{sec:fermat}
+%=====================================================================
+
+For each $s \ge 1$, the Fermat-$s$ prefix
+\[
+  F^{(s)} = (F_0, F_1, \ldots, F_{s-1}),
+  \qquad F_i = 2^{2^i} + 1
+\]
+is a $k = 2$-plus-seed: by the standard telescoping identity
+$F_0 F_1 \cdots F_{s-1} = F_s - 2$ we have $\eps(F^{(s)}) = 2^{2^s} - 1$
+and $\phist(F^{(s)}) = 2^{2^s - 1}$, so $2 \phist - \eps = 1$.
+
+Define
+\[
+  M_s \;=\; 2^{2^{s+1}} - 2^{2^s} - 1 \;=\; B E - A
+  \quad \text{at the prefix } F^{(s)},
+\]
+where $A = 1$, $B = 2^{2^s}$, $E = 2^{2^s} - 1$ as in
+Section~3.
+
+\begin{lemma}\label{lem:Mscoprime}
+$\gcd(M_s, F_i) = 1$ for every $i < s$.  More precisely,
+$M_s \equiv -1 \pmod{F_i}$.
+\end{lemma}
+
+\begin{proof}
+The order of $2$ modulo $F_i = 2^{2^i} + 1$ divides $2^{i+1}$, since
+$2^{2^i} \equiv -1 \pmod{F_i}$ implies $2^{2^{i+1}} \equiv 1
+\pmod{F_i}$.  For $i < s$, both $2^s \ge 2^{i+1}$ and $2^{s+1} \ge
+2^{i+1}$, so $2^{2^s} \equiv 2^{2^{s+1}} \equiv 1 \pmod{F_i}$.  Hence
+$M_s = 2^{2^{s+1}} - 2^{2^s} - 1 \equiv 1 - 1 - 1 \equiv -1 \pmod{F_i}$.
+\end{proof}
+
+\begin{theorem}[Fermat-prefix closedness at $r = s + 2$]\label{thm:fermat}
+For each $s \ge 1$, the $k = 2$-Lehmer factorizations of length $s + 2$
+extending $F^{(s)}$ are in bijection with the divisors $d \le
+\sqrt{M_s}$ of $M_s$.  The factorization corresponding to $d$ is
+\[
+  \bigl(F_0, F_1, \ldots, F_{s-1},\;
+        d + 2^{2^s},\;
+        M_s / d + 2^{2^s}\bigr).
+\]
+In particular, the number of such extensions is exactly $\tau(M_s) / 2$.
+\end{theorem}
+
+\begin{proof}
+By Proposition~\ref{prop:rm2} applied to the plus-seed $F^{(s)}$, the
+$k = 2$-Lehmer extensions $(a, b)$ of $F^{(s)}$ to length $s + 2$ are
+in bijection with divisor pairs $(d_1, d_2)$ of $BE - A = M_s$ with
+$d_1 \le d_2$, via $a = d_1 + B = d_1 + 2^{2^s}$ and
+$b = d_2 + B = d_2 + 2^{2^s}$.
+
+We verify the integrality, parity, and Lehmer-congruence conditions
+all hold for every such divisor pair:
+
+\emph{Integrality.}  $A = 1$, so the formulas for $a$ and $b$ are
+manifestly integer.
+
+\emph{Parity.}  $M_s = 2^{2^{s+1}} - 2^{2^s} - 1$ is odd, so every
+divisor $d$ of $M_s$ is odd.  Then $a = d + 2^{2^s}$ is odd plus
+even, hence odd; similarly for $b$.
+
+\emph{Lehmer congruence with prior factors.}  We need $F_i \nmid (a -
+1)$ and $F_i \nmid (b - 1)$ for every $i < s$.  Compute
+$a - 1 = d + 2^{2^s} - 1 = d + E$.  Since $E = F_0 F_1 \cdots F_{s-1}$
+is divisible by $F_i$, we have $a - 1 \equiv d \pmod{F_i}$.  By
+Lemma~\ref{lem:Mscoprime}, $F_i \nmid M_s$, so $F_i \nmid d$ for any
+divisor $d$ of $M_s$.  Hence $a - 1 \not\equiv 0 \pmod{F_i}$, and
+the same argument applies to $b - 1$.
+
+\emph{Lehmer congruence between $b$ and $a$.}  We need $a \nmid (b -
+1)$.  Suppose $a \mid b - 1$.  Then $a \mid b - 1 = M_s/d + E$, and
+multiplying by $d$, $a \mid M_s + Ed = (BE - 1) + Ed = E(B + d) - 1
+= Ea - 1$, hence $a \mid 1$.  But $a = d + B \ge 1 + 2^{2^s} > 1$,
+contradiction.
+
+\emph{Ordering $a \ge F_{s-1}$.}  The smallest divisor $d = 1$ gives
+$a = 1 + 2^{2^s} = F_s > F_{s-1}$.
+
+So every divisor pair contributes a valid Lehmer factorization, and
+conversely Proposition~\ref{prop:rm2} gives no others.  The count
+$\tau(M_s)/2$ is immediate (with the standard caveat that $M_s$ is
+not a perfect square, which holds since $M_s$ is odd and we verify
+case-by-case for small $s$ that no divisor pair has $d_1 = d_2$).
+\end{proof}
+
+\begin{table}[ht]
+\centering
+\caption{The Fermat-prefix completion count via
+Theorem~\ref{thm:fermat}, for $1 \le s \le 7$. Columns:
+$\tau(M_s) / 2$ predicted completions; observed in the empirical
+$r \le 7$ census (matches exactly, for $s + 2 \le 7$).
+}\label{tab:fermat-counts}
+\smallskip
+\begin{tabular}{@{}rrrr@{}}
+\toprule
+$s$ & $r = s + 2$ & $\tau(M_s)/2$ & census \\
+\midrule
+1 & 3 & 1  & 1 \\
+2 & 4 & 1  & 1 \\
+3 & 5 & 2  & 2 \\
+4 & 6 & 4  & 4 \\
+5 & 7 & 16 & 16 \\
+6 & 8 & 16 & --- \\
+7 & 9 & 8  & --- \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The factorizations of $M_6$ and $M_7$ complete in milliseconds and
+seconds respectively on commodity hardware:
+\begin{align*}
+M_6 &= 29 \cdot 101 \cdot 1061 \cdot 1741 \cdot 62893522383172982457806872591, \\
+M_7 &= 191 \cdot 71429 \cdot 660119289989 \cdot p_{56},
+\end{align*}
+where $p_{56}$ is a 56-digit prime.  Theorem~\ref{thm:fermat} thus
+yields the complete list of length-$8$ extensions of the Fermat-$6$
+prefix and length-$9$ extensions of the Fermat-$7$ prefix, by direct
+computation that bypasses the bounds-propagation search entirely.
+
+The case $s = 5$, $r = 7$ accounts for $16$ of the $74$ length-$7$
+$k = 2$ factorizations in the census of Section~\ref{sec:census}---the
+single largest family.  At $r = 8$ (out of reach of an exhaustive
+bounds-propagation search at the time of writing) the same theorem
+gives a closed enumeration of the $16$ extensions of the Fermat-$6$
+prefix; bounds-propagation is then needed only for the non-Fermat
+subtrees.
+
+\begin{remark}[Beyond $r = s + 2$]
+Theorem~\ref{thm:fermat} enumerates extensions of $F^{(s)}$ to length
+$s + 2$ exactly.  For $r > s + 2$, $F^{(s)}$ extends through
+\emph{intermediate} prefixes of length between $s$ and $r - 2$.  Among
+those intermediates, some are themselves plus-seeds (notably
+$F^{(s+1)}, F^{(s+2)}, \ldots$, which are the next Fermat prefixes
+in the chain) and some are not.  The theorem cascades along the
+Fermat chain: the $r$-extensions of $F^{(s)}$ that pass through
+$F^{(s+1)}$ are the $r$-extensions of $F^{(s+1)}$, and so on
+recursively.  The non-Fermat intermediates require bounds-propagation
+search, but this is far cheaper than a brute-force search of the
+full $F^{(s)}$ subtree.
+\end{remark}
+
+\subsection{The Fermat chain is the unique plus-seed chain}
+\label{subsec:chain-uniqueness}
+
+The cascade structure suggested in the remark above is sharper than
+it first appears: the Fermat prefixes are the \emph{only} plus-seeds
+that descend from one another.
+
+\begin{theorem}[Fermat chain uniqueness]\label{thm:chain}
+For every $s \ge 1$, the unique length-$(s+1)$ extension of $F^{(s)}$
+that is itself a $k = 2$ plus-seed is $F^{(s+1)} = (F^{(s)}, F_s)$.
+\end{theorem}
+
+\begin{proof}
+A length-$(s+1)$ extension of $F^{(s)}$ has the form $(F^{(s)}, x)$
+for some integer $x$.  The plus-seed condition for the extension is
+$2 P_{s+1} - E_{s+1} = 1$, where $E_{s+1} = E_s \cdot x$ and
+$P_{s+1} = P_s \cdot (x - 1)$.  Substituting:
+\[
+  2 P_s (x - 1) - E_s \cdot x \;=\; 1.
+\]
+Since $F^{(s)}$ is a plus-seed, $2 P_s = E_s + 1$.  Substituting:
+\[
+  (E_s + 1)(x - 1) - E_s \cdot x \;=\; x - E_s - 1 \;=\; 1,
+\]
+so $x = E_s + 2 = (2^{2^s} - 1) + 2 = 2^{2^s} + 1 = F_s$.
+\end{proof}
+
+\begin{corollary}\label{cor:chain-unique}
+The Fermat prefixes $F^{(1)} \subset F^{(2)} \subset \cdots$ form
+the unique chain of $k = 2$ plus-seeds with each
+$F^{(s+1)} \supset F^{(s)}$.
+\end{corollary}
+
+This explains the empirical observation in
+Section~\ref{sec:census}: at $r = 7$, of the $16$ length-$7$
+extensions of $F^{(5)}$, exactly one---the one with $x_6 = F_5$, namely
+$F^{(6)}$ as a length-$7$ Lehmer factorization---makes a length-$6$
+plus-seed.  The other $15$ are all length-$7$ Lehmers that do not
+extend further.
+
+\subsection{Cascade collapse along the Fermat chain}
+\label{subsec:cascade}
+
+Theorem~\ref{thm:fermat} concerns length-$(s+2)$ extensions via the
+$s = r - 2$ identity at $F^{(s)}$.  At length $s + 3$, the analogous
+tool is Proposition~\ref{prop:rm3}, the $s = r - 3$ identity, applied
+at $F^{(s)}$.  This identity has an outer loop on a small parameter
+$u$.  The next theorem says that the cascade along the Fermat chain
+collapses cleanly: the $u = 1$ slice of Proposition~\ref{prop:rm3}
+at $F^{(s)}$ is exactly Theorem~\ref{thm:fermat} applied at
+$F^{(s+1)}$.
+
+\begin{theorem}[Cascade collapse]\label{thm:cascade}
+Let $F^{(s)}$ be the Fermat-$s$ prefix and let
+\[
+  M_u \;=\; u \cdot C + u^2 EB + (EB)^2,
+  \qquad
+  C = E - 1 + 3 E^2 + 2 E^3,
+\]
+with $E = 2^{2^s} - 1$ and $B = 2^{2^s}$, be the integer of
+Proposition~\ref{prop:rm3} (specialized to the plus-seed
+$F^{(s)}$, where $A = 1$).  Then
+\[
+  M_u\big|_{u = 1} \;=\; M_{s+1}.
+\]
+\end{theorem}
+
+\begin{proof}
+Substituting $u = 1$ in $M_u$:
+\[
+  M_u\big|_{u=1} = C + EB + (EB)^2.
+\]
+We have $B = E + 1$, so $EB = E^2 + E$ and
+$(EB)^2 = E^4 + 2 E^3 + E^2$.  Substituting these and the explicit
+form of $C$:
+\[
+  M_u\big|_{u=1} = (E - 1 + 3E^2 + 2E^3) + (E^2 + E) + (E^4 + 2E^3 + E^2),
+\]
+which simplifies to
+\[
+  M_u\big|_{u=1} = E^4 + 4 E^3 + 5 E^2 + 2 E - 1.
+\]
+
+On the other hand, $M_{s+1} = 2^{2^{s+2}} - 2^{2^{s+1}} - 1$.  Writing
+$2^{2^s} = E + 1$, $2^{2^{s+1}} = (E+1)^2 = E^2 + 2E + 1$, and
+$2^{2^{s+2}} = (E^2 + 2E + 1)^2 = E^4 + 4E^3 + 6E^2 + 4E + 1$.  Thus
+\[
+  M_{s+1} = (E^4 + 4E^3 + 6E^2 + 4E + 1) - (E^2 + 2E + 1) - 1
+         = E^4 + 4E^3 + 5E^2 + 2E - 1,
+\]
+matching $M_u\big|_{u=1}$ exactly.
+\end{proof}
+
+In other words, the Fermat chain organizes the entire
+finishing-feasibility cascade.  Working at $F^{(s)}$ with the $s = r
+- 3$ identity and following the $u = 1$ slice produces the same
+arithmetic problem as working at $F^{(s+1)}$ with the $s = r - 2$
+identity.  This furnishes a direct algebraic explanation of the
+empirical observation that the bulk of the Fermat-$s$ subtree is
+generated by the next link in the chain.
+
+\begin{openproblem}[Sharper reduction for small $k$]
+The finishing-feasibility identities at $s = r - 1$ and $s = r - 2$
+are exact closed forms; at $s = r - 3$ an outer loop over $u$
+survives. Does there exist, at small $k$ (in particular $k = 2$), a
+structural identity that collapses the outer loop and turns the
+$s = r - 3$ level into a single factorization problem?
+\end{openproblem}
+
+\begin{openproblem}[$r = 8$ and beyond]
+Complete the census at $r = 8$ with Algorithm~\ref{alg:sharp}. In a
+preliminary run on modest hardware, the $r = 8$ phase of the search
+at $k = 2$ (odd parity) produced no factorizations within the first
+$\approx 15$ minutes of wall time after the $r \le 7$ census was
+already complete. This is consistent with either (i) the $r = 8$
+solution set being genuinely sparse near the start of the
+bounds-propagation frontier, or (ii) the bounds-propagation loop
+requiring hours of exploration before reaching the productive
+region. Distinguishing (i) from (ii) requires either a longer run
+or a structural result (such as a Fermat-prefix closedness theorem)
+that rules out entire subtrees a priori. Analogously push $r = 9,
+10$ as technology permits.
+\end{openproblem}
+
+
+\begin{thebibliography}{9}
+
+\bibitem{H26}
+E.~Hasanalizade, \emph{Some remarks on a paper of Molnar and Singh},
+Integers \textbf{26} (2026).
+
+\bibitem{MFT}
+G.~Molnar, \emph{The extension graph of spoof Lehmer factorizations is a
+forest}, in preparation (2026).
+
+\bibitem{MS26}
+G.~Molnar and G.~Singh, \emph{Spoof Lehmer factorizations}, Integers
+\textbf{26} (2026), \#A33.
+
+\bibitem{sympy}
+A.~Meurer et al., \emph{SymPy: symbolic computing in Python}, PeerJ
+Computer Science \textbf{3} (2017), e103.
+
+\end{thebibliography}
+
+\end{document}

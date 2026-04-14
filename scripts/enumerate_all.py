@@ -10,9 +10,12 @@ spoof-Lehmer-factorizations repository.
 from __future__ import annotations
 import argparse
 import json
+import multiprocessing as mp
 import sys
 import time
 from collections.abc import Callable
+from concurrent.futures import ProcessPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "src"))
@@ -23,7 +26,12 @@ DATA_DIR = REPO_ROOT / "data"
 from spoof_lehmer.cli.enumerate import k_upper_bound  # noqa: E402
 from spoof_lehmer.domain import Factorization  # noqa: E402
 from spoof_lehmer.search import BoundsPropagationStrategy  # noqa: E402
-from spoof_lehmer.storage import SQLiteRepository  # noqa: E402
+from spoof_lehmer.storage import (  # noqa: E402
+    InMemoryRepository,
+    Provenance,
+    SQLiteRepository,
+)
+from spoof_lehmer.tracking import RunRecord, RunResult, RunStatus  # noqa: E402
 
 STRATEGY_NAME = "bounds_propagation"
 
@@ -118,6 +126,32 @@ def search_one_pair(
     return result.added, result.nodes_explored
 
 
+def search_one_pair_isolated(
+    r: int, k: int, is_even: bool, use_finishing_feasibility: bool,
+) -> tuple[int, int, list[tuple[int, ...]], float, int]:
+    """Parallel-worker entry point: search (r, k) with no shared state.
+
+    Runs the strategy against a private InMemoryRepository and returns
+    primitive results suitable for inter-process return:
+      (r, k, factor_tuples, elapsed_seconds, nodes_explored).
+    The parent process is responsible for writing these into the real
+    SQLite repository and for the interrupt-safe bookkeeping.
+
+    This function lives at module scope so ProcessPoolExecutor can
+    pickle it on platforms using the spawn start method.
+    """
+    repo = InMemoryRepository()
+    strategy = BoundsPropagationStrategy(
+        k_target=k, max_r=r, min_r=r, is_even=is_even,
+        use_finishing_feasibility=use_finishing_feasibility,
+    )
+    t0 = time.perf_counter()
+    result = strategy.discover(repo)
+    elapsed = time.perf_counter() - t0
+    factor_tuples = [fact.factors for fact in repo.all_lehmers(k)]
+    return r, k, factor_tuples, elapsed, result.nodes_explored
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--max-r", type=int, default=6)
@@ -131,6 +165,13 @@ def main() -> None:
     parser.add_argument("--fresh", action="store_true",
                         help="Delete the existing database before starting. "
                              "Default: resume.")
+    parser.add_argument(
+        "--jobs", type=int, default=1,
+        help="Number of worker processes for parallel (r, k) search. "
+             "Default 1 = sequential with streaming per-find output. "
+             "When > 1, the inner loop over k at each r is dispatched "
+             "to a process pool; output is per-(r, k) batch.",
+    )
     args = parser.parse_args()
 
     is_even = args.parity == "even"
@@ -179,19 +220,82 @@ def main() -> None:
         r_nodes = 0
         r_resumed = 0
         r_start = time.perf_counter()
+
+        # Build the (r, k) list to search (skipping completed).
+        pending: list[int] = []
         for k in range(2, k_max_r + 1):
             if (r, k) in completed:
                 r_resumed += 1
-                continue
-            pair_start = time.perf_counter()
-            added, nodes = search_one_pair(
-                repo, r, k, is_even,
-                use_finishing_feasibility=not args.no_finishing_feasibility,
-                on_found=on_found,
-            )
-            pair_times[(r, k)] = time.perf_counter() - pair_start
-            r_added += added
-            r_nodes += nodes
+            else:
+                pending.append(k)
+
+        if args.jobs <= 1 or len(pending) <= 1:
+            # Sequential path: streaming per-find output.
+            for k in pending:
+                pair_start = time.perf_counter()
+                added, nodes = search_one_pair(
+                    repo, r, k, is_even,
+                    use_finishing_feasibility=not args.no_finishing_feasibility,
+                    on_found=on_found,
+                )
+                pair_times[(r, k)] = time.perf_counter() - pair_start
+                r_added += added
+                r_nodes += nodes
+        else:
+            # Parallel path: dispatch each k to a worker. Output is
+            # per-(r, k) batch instead of per-find, but the total set
+            # of factorizations written is identical.
+            jobs = min(args.jobs, len(pending))
+            # Use spawn to avoid fork-unsafe SQLite state leaking.
+            ctx = mp.get_context("spawn")
+            use_ff = not args.no_finishing_feasibility
+            pair_runs: dict[tuple[int, int], int] = {}
+            for k in pending:
+                pair_runs[(r, k)] = repo.begin_run(STRATEGY_NAME, k, r)
+            with ProcessPoolExecutor(
+                max_workers=jobs, mp_context=ctx,
+            ) as pool:
+                futures = {
+                    pool.submit(
+                        search_one_pair_isolated,
+                        r, k, is_even, use_ff,
+                    ): k
+                    for k in pending
+                }
+                for fut in as_completed(futures):
+                    (_r, k_done, factor_tuples, elapsed, nodes) = fut.result()
+                    # Write discovered factorizations to SQLite.
+                    pair_added = 0
+                    for factors in factor_tuples:
+                        fact = Factorization(factors, k_done)
+                        if repo.add(fact, Provenance(STRATEGY_NAME, None, datetime.now(timezone.utc).isoformat())):
+                            pair_added += 1
+                            now = time.perf_counter() - start_time
+                            factors_str = ", ".join(str(x) for x in factors)
+                            print(
+                                f"    [{_fmt_elapsed(now)}] k={k_done:<4} "
+                                f"found: ({factors_str})",
+                                flush=True,
+                            )
+                    repo.abandon_run(pair_runs[(r, k_done)])
+                    # Record the run as complete in the ledger so resume
+                    # logic sees it. The worker-side strategy.discover()
+                    # already wrote a COMPLETE record to its in-memory
+                    # repo, but that didn't reach our SQLite. Re-record.
+                    rec = RunRecord.started_now(
+                        STRATEGY_NAME, k_done, r, max_N=None,
+                    )
+                    rec.finish(RunResult(
+                        added=pair_added,
+                        status=RunStatus.COMPLETE,
+                        nodes_explored=nodes,
+                        notes=f"k_target={k_done}, parallel worker",
+                    ))
+                    repo.record_run(rec)
+                    pair_times[(r, k_done)] = elapsed
+                    r_added += pair_added
+                    r_nodes += nodes
+
         r_elapsed = time.perf_counter() - r_start
         per_r_totals[r] = r_added
         per_r_times[r] = r_elapsed
